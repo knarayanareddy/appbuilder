@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Clock, Camera, ChevronDown } from 'lucide-react';
 import type { ShootingMode } from '../types/camera';
+import { MODE_ICONS, MODE_COLORS } from '../lib/modes';
 
 interface LogEntry {
   id: string;
@@ -16,24 +17,12 @@ interface LogEntry {
   lng: number;
 }
 
-const MODE_ICONS: Record<string, string> = {
-  photo: '📷', portrait: '🖼️', night: '🌃', pro: '🎯', video: '🎬',
-  cinema: '🍔', slowmo: '⏱️', timelapse: '⏩', burst: '💥', panorama: '🌅',
-  macro: '🔬', astro: '🌌'
-};
-
-const MODE_COLORS: Record<string, string> = {
-  photo: '#60a5fa', portrait: '#f472b6', night: '#818cf8', pro: '#facc15',
-  video: '#f87171', cinema: '#fb923c', slowmo: '#34d399', timelapse: '#a78bfa',
-  burst: '#fbbf24', panorama: '#38bdf8', macro: '#4ade80', astro: '#c084fc'
-};
-
 const MOCK_LOG: LogEntry[] = [
   { id: '1', mode: 'pro', timestamp: new Date(Date.now() - 900000), iso: 400, shutterSpeed: '1/250', ev: 0, colorProfile: 'Natural', fileFormat: 'RAW+JPEG', location: 'Golden Gate Bridge, SF', lat: 37.8199, lng: -122.4783 },
   { id: '2', mode: 'portrait', timestamp: new Date(Date.now() - 1800000), iso: 100, shutterSpeed: '1/125', ev: 0.3, colorProfile: 'Portrait', fileFormat: 'JPEG', location: 'Dolores Park, SF', lat: 37.7596, lng: -122.4269 },
   { id: '3', mode: 'night', timestamp: new Date(Date.now() - 7200000), iso: 3200, shutterSpeed: '1/15', ev: -0.3, colorProfile: 'Moody', fileFormat: 'RAW', location: 'Bay Bridge, SF', lat: 37.7983, lng: -122.3778 },
   { id: '4', mode: 'astro', timestamp: new Date(Date.now() - 86400000), iso: 6400, shutterSpeed: '30"', ev: -1, colorProfile: 'Natural', fileFormat: 'RAW', location: 'Mount Tamalpais', lat: 37.9235, lng: -122.5974 },
-  { id: '5', mode: 'video', timestamp: new Date(Date.now() - 172800000), iso: 800, shutterSpeed: '1/50', ev: 0, colorProfile: 'LOG', fileFormat: 'HEIF', location: 'Fisherman\'s Wharf, SF', lat: 37.808, lng: -122.4177 },
+  { id: '5', mode: 'video', timestamp: new Date(Date.now() - 172800000), iso: 800, shutterSpeed: '1/50', ev: 0, colorProfile: 'LOG', fileFormat: 'HEIF', location: "Fisherman's Wharf, SF", lat: 37.808, lng: -122.4177 },
   { id: '6', mode: 'macro', timestamp: new Date(Date.now() - 259200000), iso: 200, shutterSpeed: '1/500', ev: 0, colorProfile: 'Vivid', fileFormat: 'JPEG', location: 'Botanical Garden, SF', lat: 37.7693, lng: -122.4714 },
   { id: '7', mode: 'burst', timestamp: new Date(Date.now() - 345600000), iso: 400, shutterSpeed: '1/1000', ev: 0, colorProfile: 'Landscape', fileFormat: 'JPEG', location: 'Baker Beach, SF', lat: 37.7933, lng: -122.4833 },
   { id: '8', mode: 'cinema', timestamp: new Date(Date.now() - 432000000), iso: 1600, shutterSpeed: '1/50', ev: -0.7, colorProfile: 'Cinematic', fileFormat: 'HEIF', location: 'Mission District, SF', lat: 37.7599, lng: -122.4148 },

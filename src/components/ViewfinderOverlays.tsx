@@ -151,7 +151,10 @@ export function ViewfinderOverlays({ settings, isShooting }: Props) {
           ))}
           <div
             className="w-1 h-1 rounded-full bg-yellow-400 absolute"
-            style={{ right: 0, top: `calc(50% + ${-0 * 8}px)` }}
+            style={{
+              right: 0,
+              top: `calc(50% + ${-Math.min(3, Math.max(-3, settings.ev)) * 8}px)`,
+            }}
           />
         </div>
       </div>

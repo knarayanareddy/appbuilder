@@ -17,7 +17,6 @@ const ZOOM_STOPS = [
 
 export function ZoomSlider({ settings, updateSetting }: Props) {
   const currentZoom = settings.zoomLevel;
-  const currentStop = ZOOM_STOPS.find(s => s.value === currentZoom);
 
   const getZoomLabel = () => {
     if (currentZoom < 1) return `${currentZoom}× Ultrawide`;

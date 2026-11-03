@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { CameraSettings, ShootingMode, CustomPreset } from '../types/camera';
 
 const ISO_VALUES = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800];
@@ -47,16 +47,46 @@ const defaultSettings: CameraSettings = {
   location: { lat: 37.7749, lng: -122.4194, alt: 52 },
 };
 
+const defaultPresets: CustomPreset[] = [
+  { id: '1', name: 'Golden Hour', settings: { iso: 200, shutterSpeed: '1/250', ev: 0.3, colorProfile: 'Vivid', whiteBalance: 'Daylight' } },
+  { id: '2', name: 'Night Street', settings: { iso: 3200, shutterSpeed: '1/30', ev: -0.3, colorProfile: 'Moody', whiteBalance: 'Tungsten' } },
+  { id: '3', name: 'Cinema LOG', settings: { iso: 800, shutterSpeed: '1/50', colorProfile: 'LOG', stabilization: 'Active', anamorphic: true } },
+];
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+  return fallback;
+}
+
+function saveToStorage<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    return;
+  }
+}
+
 export function useCameraSettings() {
-  const [mode, setMode] = useState<ShootingMode>('photo');
-  const [settings, setSettings] = useState<CameraSettings>(defaultSettings);
+  const [mode, setMode] = useState<ShootingMode>(() => loadFromStorage('procam-mode', 'photo'));
+  const [settings, setSettings] = useState<CameraSettings>(() =>
+    loadFromStorage('procam-settings', defaultSettings)
+  );
   const [isRecording, setIsRecording] = useState(false);
   const [isShooting, setIsShooting] = useState(false);
-  const [presets, setPresets] = useState<CustomPreset[]>([
-    { id: '1', name: 'Golden Hour', settings: { iso: 200, shutterSpeed: '1/250', ev: 0.3, colorProfile: 'Vivid', whiteBalance: 'Daylight' } },
-    { id: '2', name: 'Night Street', settings: { iso: 3200, shutterSpeed: '1/30', ev: -0.3, colorProfile: 'Moody', whiteBalance: 'Tungsten' } },
-    { id: '3', name: 'Cinema LOG', settings: { iso: 800, shutterSpeed: '1/50', colorProfile: 'LOG', stabilization: 'Active', anamorphic: true } },
-  ]);
+  const [presets, setPresets] = useState<CustomPreset[]>(() =>
+    loadFromStorage('procam-presets', defaultPresets)
+  );
+
+  useEffect(() => {
+    saveToStorage('procam-mode', mode);
+    saveToStorage('procam-settings', settings);
+    saveToStorage('procam-presets', presets);
+  }, [mode, settings, presets]);
 
   const updateSetting = useCallback(<K extends keyof CameraSettings>(key: K, value: CameraSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -68,7 +98,7 @@ export function useCameraSettings() {
 
   const savePreset = useCallback((name: string) => {
     const newPreset: CustomPreset = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID?.() ?? Date.now().toString(),
       name,
       settings: { ...settings },
     };
@@ -93,21 +123,25 @@ export function useCameraSettings() {
 
   const nextISO = useCallback(() => {
     const idx = ISO_VALUES.indexOf(settings.iso);
+    if (idx < 0) return; // current ISO not in stop list (e.g. from a preset); do nothing
     if (idx < ISO_VALUES.length - 1) updateSetting('iso', ISO_VALUES[idx + 1]);
   }, [settings.iso, updateSetting]);
 
   const prevISO = useCallback(() => {
     const idx = ISO_VALUES.indexOf(settings.iso);
+    if (idx < 0) return;
     if (idx > 0) updateSetting('iso', ISO_VALUES[idx - 1]);
   }, [settings.iso, updateSetting]);
 
   const nextShutter = useCallback(() => {
     const idx = SHUTTER_SPEEDS.indexOf(settings.shutterSpeed);
+    if (idx < 0) return;
     if (idx < SHUTTER_SPEEDS.length - 1) updateSetting('shutterSpeed', SHUTTER_SPEEDS[idx + 1]);
   }, [settings.shutterSpeed, updateSetting]);
 
   const prevShutter = useCallback(() => {
     const idx = SHUTTER_SPEEDS.indexOf(settings.shutterSpeed);
+    if (idx < 0) return;
     if (idx > 0) updateSetting('shutterSpeed', SHUTTER_SPEEDS[idx - 1]);
   }, [settings.shutterSpeed, updateSetting]);
 

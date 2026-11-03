@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import {
-  RotateCcw, Activity, Lock, Unlock
-} from 'lucide-react';
+import { RotateCcw, Activity, Lock, Unlock } from 'lucide-react';
 import type { CameraSettings, ShootingMode } from '../types/camera';
+import { MODE_CONFIGS } from '../lib/modes';
 import { Histogram } from './Histogram';
 import { ViewfinderOverlays } from './ViewfinderOverlays';
 import { ZoomSlider } from './ZoomSlider';
@@ -16,36 +15,6 @@ interface Props {
   isShooting: boolean;
   triggerShutter: () => void;
 }
-
-const MODE_CONFIGS: Record<ShootingMode, { label: string; color: string; icon: string; subtext: string }> = {
-  photo:     { label: 'PHOTO',     color: '#60a5fa', icon: '📷', subtext: 'Smart Auto' },
-  video:     { label: 'VIDEO',     color: '#f87171', icon: '🎬', subtext: '4K 30fps' },
-  pro:       { label: 'PRO',       color: '#facc15', icon: '🎯', subtext: 'Full Manual' },
-  night:     { label: 'NIGHT',     color: '#818cf8', icon: '🌃', subtext: 'Multi-frame stack' },
-  portrait:  { label: 'PORTRAIT',  color: '#f472b6', icon: '🖼️', subtext: 'Bokeh f/1.8' },
-  panorama:  { label: 'PANORAMA',  color: '#38bdf8', icon: '🌅', subtext: 'Wide stitching' },
-  slowmo:    { label: 'SLOW-MO',   color: '#34d399', icon: '⏱️', subtext: '240fps' },
-  timelapse: { label: 'TIME-LAPSE',color: '#a78bfa', icon: '⏩', subtext: 'Interval: 1s' },
-  macro:     { label: 'MACRO',     color: '#4ade80', icon: '🔬', subtext: 'Close-up' },
-  astro:     { label: 'ASTRO',     color: '#c084fc', icon: '🌌', subtext: 'Long exposure' },
-  cinema:    { label: 'CINEMA',    color: '#fb923c', icon: '🍔', subtext: 'LOG + Anamorphic' },
-  burst:     { label: 'BURST',     color: '#fbbf24', icon: '💥', subtext: '20fps burst' },
-};
-
-const BG_GRADIENTS: Record<ShootingMode, string> = {
-  photo:     'radial-gradient(ellipse at 40% 50%, #1a3a5c 0%, #0a1628 60%, #050d1a 100%)',
-  video:     'radial-gradient(ellipse at 50% 40%, #2a1a1a 0%, #1a0a0a 60%, #0a0505 100%)',
-  pro:       'radial-gradient(ellipse at 45% 55%, #1a1a2e 0%, #12121e 60%, #08080f 100%)',
-  night:     'radial-gradient(ellipse at 30% 60%, #0d0f2a 0%, #080a1a 70%, #03040d 100%)',
-  portrait:  'radial-gradient(ellipse at 50% 40%, #2a1a2e 0%, #1a0f1e 60%, #0d0810 100%)',
-  panorama:  'radial-gradient(ellipse at 50% 70%, #1a2a3a 0%, #0a1a2a 50%, #030f1a 100%)',
-  slowmo:    'radial-gradient(ellipse at 50% 50%, #0a2a1e 0%, #051a10 60%, #020d08 100%)',
-  timelapse: 'radial-gradient(ellipse at 50% 30%, #2a1f3a 0%, #1a1028 60%, #0d0814 100%)',
-  macro:     'radial-gradient(ellipse at 60% 60%, #1a2a1a 0%, #0f1a0f 60%, #070d07 100%)',
-  astro:     'radial-gradient(ellipse at 50% 40%, #04041a 0%, #02020d 60%, #010108 100%)',
-  cinema:    'radial-gradient(ellipse at 50% 50%, #1a1208 0%, #0d0a05 60%, #070503 100%)',
-  burst:     'radial-gradient(ellipse at 40% 50%, #1a1a0a 0%, #0f0f05 60%, #080805 100%)',
-};
 
 function RecordingIndicator({ isRecording, elapsedSeconds }: { isRecording: boolean; elapsedSeconds: number }) {
   if (!isRecording) return null;
@@ -209,7 +178,7 @@ export function Viewfinder({ mode, settings, updateSetting, isRecording, toggleR
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  const bgGradient = BG_GRADIENTS[mode];
+  const bgGradient = MODE_CONFIGS[mode].gradient;
 
   return (
     <div

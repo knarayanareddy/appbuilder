@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Download, Share2, Trash2, ChevronLeft, Filter } from 'lucide-react';
 import type { Shot, ShootingMode } from '../types/camera';
+import { MODE_COLORS, MODE_ICONS, MODES } from '../lib/modes';
 
 // Generate mock gallery shots
 function generateMockShots(): Shot[] {
@@ -27,18 +28,6 @@ function generateMockShots(): Shot[] {
 }
 
 const MOCK_SHOTS = generateMockShots();
-
-const MODE_COLORS: Record<string, string> = {
-  photo: '#60a5fa', portrait: '#f472b6', night: '#818cf8', pro: '#facc15',
-  video: '#f87171', cinema: '#fb923c', slowmo: '#34d399', timelapse: '#a78bfa',
-  burst: '#fbbf24', panorama: '#38bdf8', macro: '#4ade80', astro: '#c084fc'
-};
-
-const MODE_ICONS: Record<string, string> = {
-  photo: '📷', portrait: '🖼️', night: '🌃', pro: '🎯', video: '🎬',
-  cinema: '🍔', slowmo: '⏱️', timelapse: '⏩', burst: '💥', panorama: '🌅',
-  macro: '🔬', astro: '🌌'
-};
 
 function formatTime(date: Date) {
   const now = new Date();
@@ -115,7 +104,15 @@ function ShotThumbnail({ shot, onClick, isSelected }: ThumbnailProps) {
   );
 }
 
-function ShotDetail({ shot, onClose }: { shot: Shot & { thumbnailColors?: string[] }; onClose: () => void }) {
+function ShotDetail({
+  shot,
+  onClose,
+  onDelete,
+}: {
+  shot: Shot & { thumbnailColors?: string[] };
+  onClose: () => void;
+  onDelete?: () => void;
+}) {
   const colors = shot.thumbnailColors || ['#1e3a5f', '#4a90d9'];
   const modeColor = MODE_COLORS[shot.mode] || '#60a5fa';
 
@@ -133,13 +130,33 @@ function ShotDetail({ shot, onClose }: { shot: Shot & { thumbnailColors?: string
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
           <div className="flex gap-2">
-            <button className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center">
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({ title: `ProCam — ${shot.mode}`, url: window.location.href });
+                } else {
+                  alert('Share not supported in this preview.');
+                }
+              }}
+              className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center"
+            >
               <Share2 className="w-4 h-4 text-white" />
             </button>
-            <button className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center">
+            <button
+              onClick={() => {
+                alert('Download started (mock image — no real asset to download).');
+              }}
+              className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center"
+            >
               <Download className="w-4 h-4 text-white" />
             </button>
-            <button className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center">
+            <button
+              onClick={() => {
+                onDelete?.();
+                onClose();
+              }}
+              className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center"
+            >
               <Trash2 className="w-4 h-4 text-red-400" />
             </button>
           </div>
@@ -180,13 +197,16 @@ function ShotDetail({ shot, onClose }: { shot: Shot & { thumbnailColors?: string
 }
 
 export function GalleryView() {
+  const [shots, setShots] = useState(() =>
+    MOCK_SHOTS as (Shot & { thumbnailColors?: string[] })[]
+  );
   const [selectedShot, setSelectedShot] = useState<(Shot & { thumbnailColors?: string[] }) | null>(null);
   const [filterMode, setFilterMode] = useState<string>('all');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const shots = MOCK_SHOTS as (Shot & { thumbnailColors?: string[] })[];
   const filtered = filterMode === 'all' ? shots : shots.filter(s => s.mode === filterMode);
+  const rawCount = shots.filter(s => s.settings?.fileFormat?.includes('RAW')).length;
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -197,6 +217,12 @@ export function GalleryView() {
     });
   };
 
+  const handleDelete = () => {
+    setShots(prev => prev.filter(s => !selectedIds.has(s.id)));
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  };
+
   const handleShotClick = (shot: Shot & { thumbnailColors?: string[] }) => {
     if (selectionMode) {
       toggleSelect(shot.id);
@@ -205,7 +231,7 @@ export function GalleryView() {
     }
   };
 
-  const modes = ['all', 'photo', 'portrait', 'night', 'pro', 'video', 'macro', 'astro', 'burst'];
+  const modes = ['all', ...MODES.map((m) => m.id as string)];
 
   return (
     <div className="flex flex-col h-full bg-gray-950 text-white">
@@ -213,7 +239,7 @@ export function GalleryView() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div>
           <h2 className="font-bold text-white">Gallery</h2>
-          <p className="text-[10px] text-white/40">{shots.length} shots • {shots.filter(s => s.settings?.fileFormat?.includes('RAW')).length} RAW</p>
+          <p className="text-[10px] text-white/40">{shots.length} shots • {rawCount} RAW</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -223,7 +249,12 @@ export function GalleryView() {
             {selectionMode ? `${selectedIds.size} Selected` : 'Select'}
           </button>
           {selectionMode && selectedIds.size > 0 && (
-            <button className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400">Delete</button>
+            <button
+              onClick={handleDelete}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400"
+            >
+              Delete
+            </button>
           )}
         </div>
       </div>
@@ -233,7 +264,7 @@ export function GalleryView() {
         {[
           { label: 'Total', value: shots.length, color: '#60a5fa' },
           { label: 'Today', value: shots.filter(s => s.timestamp > new Date(Date.now() - 86400000)).length, color: '#34d399' },
-          { label: 'RAW', value: 4, color: '#fbbf24' },
+          { label: 'RAW', value: rawCount, color: '#fbbf24' },
           { label: 'Video', value: shots.filter(s => s.mode === 'video' || s.mode === 'cinema').length, color: '#f87171' },
         ].map(stat => (
           <div key={stat.label} className="flex-1 text-center">
@@ -274,7 +305,16 @@ export function GalleryView() {
       </div>
 
       {/* Shot detail */}
-      {selectedShot && <ShotDetail shot={selectedShot} onClose={() => setSelectedShot(null)} />}
+      {selectedShot && (
+        <ShotDetail
+          shot={selectedShot}
+          onClose={() => setSelectedShot(null)}
+          onDelete={() => {
+            setShots(prev => prev.filter(s => s.id !== selectedShot!.id));
+            setSelectedShot(null);
+          }}
+        />
+      )}
     </div>
   );
 }
