@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { CameraSettings, ShootingMode, CustomPreset } from '../types/camera';
+import type { CameraSettings, CustomPreset, ShootingMode } from '../types/camera';
 
 const ISO_VALUES = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800];
 const SHUTTER_SPEEDS = [
@@ -7,6 +7,14 @@ const SHUTTER_SPEEDS = [
   '1/60', '1/30', '1/15', '1/8', '1/4', '1/2', '1"', '2"', '4"',
   '8"', '15"', '30"', 'BULB'
 ];
+
+const STORAGE_KEYS = {
+  mode: 'procam-mode',
+  settings: 'procam-settings',
+  presets: 'procam-presets',
+} as const;
+
+const MAX_PRESETS = 50;
 
 const defaultSettings: CameraSettings = {
   iso: 100,
@@ -44,7 +52,7 @@ const defaultSettings: CameraSettings = {
   subjectTracking: false,
   nightModeFrames: 8,
   hdrMode: false,
-  location: { lat: 37.7749, lng: -122.4194, alt: 52 },
+  location: null,
 };
 
 const defaultPresets: CustomPreset[] = [
@@ -53,60 +61,139 @@ const defaultPresets: CustomPreset[] = [
   { id: '3', name: 'Cinema LOG', settings: { iso: 800, shutterSpeed: '1/50', colorProfile: 'LOG', stabilization: 'Active', anamorphic: true } },
 ];
 
-function loadFromStorage<T>(key: string, fallback: T): T {
+const VALID_MODES: ShootingMode[] = [
+  'photo', 'video', 'pro', 'night', 'portrait', 'panorama', 'slowmo',
+  'timelapse', 'macro', 'astro', 'cinema', 'burst',
+];
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isValidLocation(value: unknown): value is { lat: number; lng: number; alt: number } | null {
+  if (value === null) return true;
+  if (typeof value !== 'object' || value === null) return false;
+  const loc = value as Record<string, unknown>;
+  return (
+    isFiniteNumber(loc.lat) && loc.lat >= -90 && loc.lat <= 90 &&
+    isFiniteNumber(loc.lng) && loc.lng >= -180 && loc.lng <= 180 &&
+    isFiniteNumber(loc.alt)
+  );
+}
+
+function isValidCameraSettings(value: unknown): value is Partial<CameraSettings> {
+  if (typeof value !== 'object' || value === null) return false;
+  const s = value as Record<string, unknown>;
+
+  if (s.iso !== undefined && (!isFiniteNumber(s.iso) || !ISO_VALUES.includes(s.iso))) return false;
+  if (s.shutterSpeed !== undefined && typeof s.shutterSpeed !== 'string') return false;
+  if (s.ev !== undefined && (!isFiniteNumber(s.ev) || s.ev < -3 || s.ev > 3)) return false;
+  if (s.kelvin !== undefined && (!isFiniteNumber(s.kelvin) || s.kelvin < 2300 || s.kelvin > 10000)) return false;
+  if (s.tint !== undefined && (!isFiniteNumber(s.tint) || s.tint < -50 || s.tint > 50)) return false;
+  if (s.manualFocus !== undefined && (!isFiniteNumber(s.manualFocus) || s.manualFocus < 0 || s.manualFocus > 100)) return false;
+  if (s.zebraThreshold !== undefined && (!isFiniteNumber(s.zebraThreshold) || s.zebraThreshold < 70 || s.zebraThreshold > 100)) return false;
+  if (s.audioLevel !== undefined && (!isFiniteNumber(s.audioLevel) || s.audioLevel < 0 || s.audioLevel > 100)) return false;
+  if (s.zoomLevel !== undefined && (!isFiniteNumber(s.zoomLevel) || s.zoomLevel < 0.6 || s.zoomLevel > 100)) return false;
+  if (s.nightModeFrames !== undefined && !Number.isInteger(s.nightModeFrames)) return false;
+  if (s.location !== undefined && !isValidLocation(s.location)) return false;
+
+  return true;
+}
+
+function isValidPreset(value: unknown): value is CustomPreset {
+  if (typeof value !== 'object' || value === null) return false;
+  const p = value as Record<string, unknown>;
+  return (
+    typeof p.id === 'string' && p.id.length > 0 &&
+    typeof p.name === 'string' && p.name.length > 0 &&
+    isValidCameraSettings(p.settings)
+  );
+}
+
+function loadFromStorage<T>(key: string, fallback: T, sanitize?: (value: unknown) => T | null): T {
   try {
     const raw = localStorage.getItem(key);
-    if (raw !== null) return JSON.parse(raw) as T;
+    if (raw === null) return fallback;
+    const parsed = JSON.parse(raw);
+    if (sanitize) {
+      const cleaned = sanitize(parsed);
+      if (cleaned !== null) return cleaned;
+      return fallback;
+    }
+    return parsed as T;
   } catch {
     return fallback;
   }
-  return fallback;
 }
 
 function saveToStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    return;
+    // Storage quota exceeded or private mode — silently ignore so the app keeps working.
   }
 }
 
+export function clearStoredSettings(): void {
+  Object.values(STORAGE_KEYS).forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore removal failures.
+    }
+  });
+}
+
 export function useCameraSettings() {
-  const [mode, setMode] = useState<ShootingMode>(() => loadFromStorage('procam-mode', 'photo'));
-  const [settings, setSettings] = useState<CameraSettings>(() =>
-    loadFromStorage('procam-settings', defaultSettings)
+  const [mode, setMode] = useState<ShootingMode>(() =>
+    loadFromStorage(STORAGE_KEYS.mode, 'photo', (value): ShootingMode | null =>
+      typeof value === 'string' && VALID_MODES.includes(value as ShootingMode) ? (value as ShootingMode) : null
+    )
   );
+  const [settings, setSettings] = useState<CameraSettings>(() => {
+    const loaded = loadFromStorage(STORAGE_KEYS.settings, defaultSettings, (value): CameraSettings | null => {
+      if (!isValidCameraSettings(value)) return null;
+      return { ...defaultSettings, ...value };
+    });
+    return loaded;
+  });
   const [isRecording, setIsRecording] = useState(false);
   const [isShooting, setIsShooting] = useState(false);
   const [presets, setPresets] = useState<CustomPreset[]>(() =>
-    loadFromStorage('procam-presets', defaultPresets)
+    loadFromStorage(STORAGE_KEYS.presets, defaultPresets, (value): CustomPreset[] | null => {
+      if (!Array.isArray(value) || !value.every(isValidPreset)) return null;
+      return value;
+    })
   );
 
   useEffect(() => {
-    saveToStorage('procam-mode', mode);
-    saveToStorage('procam-settings', settings);
-    saveToStorage('procam-presets', presets);
+    saveToStorage(STORAGE_KEYS.mode, mode);
+    saveToStorage(STORAGE_KEYS.settings, settings);
+    saveToStorage(STORAGE_KEYS.presets, presets);
   }, [mode, settings, presets]);
 
   const updateSetting = useCallback(<K extends keyof CameraSettings>(key: K, value: CameraSettings[K]) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettings((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const applyPreset = useCallback((preset: CustomPreset) => {
-    setSettings(prev => ({ ...prev, ...preset.settings }));
+    setSettings((prev) => ({ ...prev, ...preset.settings }));
   }, []);
 
   const savePreset = useCallback((name: string) => {
+    if (!name.trim()) return;
+    if (presets.length >= MAX_PRESETS) return;
+
     const newPreset: CustomPreset = {
-      id: crypto.randomUUID?.() ?? Date.now().toString(),
-      name,
+      id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: name.trim(),
       settings: { ...settings },
     };
-    setPresets(prev => [...prev, newPreset]);
-  }, [settings]);
+    setPresets((prev) => [...prev, newPreset]);
+  }, [settings, presets.length]);
 
   const deletePreset = useCallback((id: string) => {
-    setPresets(prev => prev.filter(p => p.id !== id));
+    setPresets((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
   const triggerShutter = useCallback(() => {
@@ -115,7 +202,7 @@ export function useCameraSettings() {
   }, []);
 
   const toggleRecording = useCallback(() => {
-    setIsRecording(prev => !prev);
+    setIsRecording((prev) => !prev);
   }, []);
 
   const getISO = () => ISO_VALUES;
@@ -123,7 +210,7 @@ export function useCameraSettings() {
 
   const nextISO = useCallback(() => {
     const idx = ISO_VALUES.indexOf(settings.iso);
-    if (idx < 0) return; // current ISO not in stop list (e.g. from a preset); do nothing
+    if (idx < 0) return;
     if (idx < ISO_VALUES.length - 1) updateSetting('iso', ISO_VALUES[idx + 1]);
   }, [settings.iso, updateSetting]);
 
@@ -151,6 +238,7 @@ export function useCameraSettings() {
     isRecording, toggleRecording,
     isShooting, triggerShutter,
     presets, applyPreset, savePreset, deletePreset,
+    clearStoredSettings,
     getISO, getShutterSpeeds,
     nextISO, prevISO, nextShutter, prevShutter,
   };

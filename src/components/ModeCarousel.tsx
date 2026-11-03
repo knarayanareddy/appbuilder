@@ -25,7 +25,24 @@ export function ModeCarousel({ current, onChange }: Props) {
 
   const handleMouseUp = () => setDragStart(null);
 
-  const currentIdx = MODES.findIndex(m => m.id === current);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setDragStart(touch.clientX);
+    setScrollStart(containerRef.current?.scrollLeft ?? 0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragStart === null || !containerRef.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStart;
+    // Prevent the page from scrolling while dragging the carousel horizontally.
+    e.preventDefault();
+    containerRef.current.scrollLeft = scrollStart - dx;
+  };
+
+  const handleTouchEnd = () => setDragStart(null);
+
+  const currentIdx = MODES.findIndex((m) => m.id === current);
 
   return (
     <div className="relative w-full bg-black/40 backdrop-blur-sm border-t border-white/10">
@@ -34,12 +51,16 @@ export function ModeCarousel({ current, onChange }: Props) {
 
       <div
         ref={containerRef}
-        className="flex items-center gap-1 overflow-x-auto scrollbar-hide px-[calc(50%-60px)] py-2 cursor-grab active:cursor-grabbing select-none"
+        className="flex items-center gap-1 overflow-x-auto scrollbar-hide px-[calc(50%-60px)] py-2 cursor-grab active:cursor-grabbing select-none touch-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{ scrollBehavior: 'smooth' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        style={{ scrollBehavior: 'smooth', WebkitOverflowScrolling: 'touch' }}
       >
         {MODES.map((mode, idx) => {
           const isActive = mode.id === current;
