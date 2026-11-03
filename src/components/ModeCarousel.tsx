@@ -1,27 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { ShootingMode } from '../types/camera';
-
-interface ModeItem {
-  id: ShootingMode;
-  icon: string;
-  label: string;
-  color: string;
-}
-
-const MODES: ModeItem[] = [
-  { id: 'photo',     icon: '📷', label: 'PHOTO',     color: '#60a5fa' },
-  { id: 'portrait',  icon: '🖼️', label: 'PORTRAIT',  color: '#f472b6' },
-  { id: 'night',     icon: '🌃', label: 'NIGHT',     color: '#818cf8' },
-  { id: 'pro',       icon: '🎯', label: 'PRO',       color: '#facc15' },
-  { id: 'video',     icon: '🎬', label: 'VIDEO',     color: '#f87171' },
-  { id: 'cinema',    icon: '🍔', label: 'CINEMA',    color: '#fb923c' },
-  { id: 'slowmo',    icon: '⏱️', label: 'SLOW-MO',  color: '#34d399' },
-  { id: 'timelapse', icon: '⏩', label: 'TIME-LAPSE',color: '#a78bfa' },
-  { id: 'burst',     icon: '💥', label: 'BURST',     color: '#fbbf24' },
-  { id: 'panorama',  icon: '🌅', label: 'PANORAMA',  color: '#38bdf8' },
-  { id: 'macro',     icon: '🔬', label: 'MACRO',     color: '#4ade80' },
-  { id: 'astro',     icon: '🌌', label: 'ASTRO',     color: '#c084fc' },
-];
+import { MODES } from '../lib/modes';
 
 interface Props {
   current: ShootingMode;

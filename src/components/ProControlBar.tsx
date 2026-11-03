@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { CameraSettings, ActivePanel } from '../types/camera';
+import type { CameraSettings, ActivePanel, ShootingMode } from '../types/camera';
 
 interface Props {
   settings: CameraSettings;
   updateSetting: <K extends keyof CameraSettings>(key: K, value: CameraSettings[K]) => void;
-  mode: string;
+  mode: ShootingMode;
 }
 
 const ISO_VALUES = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800];
