@@ -144,50 +144,22 @@ It is a *debug* APK: signed with the standard debug key, so it installs fine by 
 but is not suitable for the Play Store. If this app earns its place, the next step would be
 a release build with a real keystore.
 
-### Put every build in Drive (optional, one-time setup)
+### Put every build in Drive (optional — easier to skip)
 
-GitHub serves build artifacts from storage that some environments cannot reach — the Arena
-sandbox is one of them, which is why the APK could not simply be handed to Drive after the
-fact. `scripts/upload-to-drive.mjs` fixes that from inside the build: if the credentials
-below exist, every build also copies `app-debug.apk` into a Drive folder, replacing the
-previous copy (Drive keeps the old versions). Without them the step is skipped silently and
-the build is unaffected.
+**No setup at all:** use the install link above. If you also want an archive copy in Drive,
+download the APK on the Mac and drag it into your Drive folder. Two actions, only when you
+want one.
 
-1. **Create the OAuth client — type Web application.** This credential belongs to the
-   *build machine*, not to the phone: the app never talks to Google (it is offline by
-   design), so there is nothing here to register a package name and SHA-1 fingerprint for.
-   An **Android** client is the wrong shape for three reasons: it has no client secret, a
-   refresh token cannot be renewed server-side without one, and its identity is bound to a
-   signing certificate — which changes with every CI runner, because each one generates a
-   fresh debug keystore. **Desktop app** is also wrong in this recipe, because it cannot be
-   used with the OAuth Playground in step 2 (Google's docs are explicit that a web
-   application client is the only type that works there).
-   In [Google Cloud console](https://console.cloud.google.com): create a project → enable the
-   **Google Drive API** → OAuth consent screen *External*, then **publish it** ("In
-   production" — in *Testing* mode Google expires refresh tokens after 7 days, which would
-   break the build weekly) → Credentials → *Create credentials* → *OAuth client ID* →
-   **Web application** → under *Authorised redirect URIs* add
-   `https://developers.google.com/oauthplayground` (and remove it afterwards if you like) →
-   note the client id and secret. The unverified-app warning is expected; it is your own
-   project.
-2. **Get a refresh token.** Open the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground),
-   use the gear icon to tick *Use your own OAuth credentials* and paste the id/secret from
-   step 1, keep the flow on *Server-side*, authorise the scope
-   `https://www.googleapis.com/auth/drive`, then *Exchange authorization code for tokens* and
-   copy the **refresh token**. (The narrower `drive.file` scope cannot see a folder you
-   created by hand, so the build could not upload into it.)
-3. **Pick the folder.** Create it in Drive and copy the id out of its URL:
-   `https://drive.google.com/drive/folders/`**`<this part is the id>`**.
-4. **Tell GitHub.** Repository → Settings → Secrets and variables → Actions:
-   - secrets `GDRIVE_CLIENT_ID`, `GDRIVE_CLIENT_SECRET`, `GDRIVE_REFRESH_TOKEN`
-   - variable `GDRIVE_FOLDER_ID`
+**If you would rather every build land in Drive by itself:** `scripts/upload-to-drive.mjs`
+does that from inside the build, so the file never has to survive the trip through anyone
+else's storage. It needs a one-time credential minted in Google Cloud (about ten minutes),
+because the only shortcuts are worse: rclone's shared client is being retired, and a service
+account has no storage quota on a personal account.
 
-The next build prints a `https://drive.google.com/file/d/<id>/view` link in the log. Check
-the setup without building anything with:
-
-```
-node scripts/upload-to-drive.mjs --check
-```
+The full procedure — in the order the console actually presents it, since "OAuth consent
+screen" is now **Google Auth Platform → Branding / Audience / Clients** — is in
+[DRIVE-UPLOAD.md](DRIVE-UPLOAD.md). Without those secrets the CI step is skipped and the build
+is unaffected.
 
 The `android/` folder is **not committed** — it is generated from `capacitor.config.ts` by
 `npx cap add android` on every build. That keeps a large, machine-specific, constantly

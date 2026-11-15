@@ -329,6 +329,15 @@ application clients.
 Deliberately no service account: a personal Gmail account gives a service account zero
 storage quota, so uploads it owns fail. The token is the user's own.
 
+Two notes that belong here because they are the reasons this cannot be a one-liner:
+`rclone authorize` — the usual shortcut, which borrows rclone's shared client — is being
+retired during 2026 and is rate limited until then, so a token minted that way can die under
+the build. And the console instructions had to be rewritten once already: the "OAuth consent
+screen" page no longer exists, it is **Google Auth Platform** with Branding / Audience /
+Clients tabs, which is why a numbered list written against the old UI sent the reader in the
+wrong order. The setup now lives in `DRIVE-UPLOAD.md` rather than the README, because nine
+tenths of readers should never do it.
+
 ### Deliberately not built
 
 Cloud sync, accounts, sharing, notifications, and encryption. Each one either contradicts
