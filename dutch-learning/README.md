@@ -33,6 +33,19 @@ it for every app, not just this one.
 No account, no network, no XP. The statistics are the ones that predict whether you can
 follow a conversation, not the ones that predict whether you come back tomorrow.
 
+## The interface
+
+Dark, warm, and built for a thumb: a chunky orange primary action, 26px cards, a real
+unit path with progress rings, a floating tab bar, and motion that says "that was right"
+instead of "loading". Nunito is bundled with the app (latin subset, 39 KB) so the type
+never waits on a network font, and the session is full-screen — no navigation while you
+are answering.
+
+Everything is plain CSS with no UI framework: one `src/styles.css` design system
+(tokens, buttons, cards, path, feedback states) and `src/components/icons.tsx` (a
+hand-drawn 24×24 icon set). That is what makes a theme change a ten-line diff, not a
+dependency migration.
+
 ## Voice quality
 
 - Bundled recordings win when a sentence has one (`public/audio/`, see [docs/AUDIO.md](docs/AUDIO.md))

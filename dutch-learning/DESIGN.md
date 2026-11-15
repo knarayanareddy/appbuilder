@@ -340,5 +340,14 @@ signing and a CI-released install link.
 The ladder also gained the drills that make short sessions productive: multiple choice,
 word-bank sentence building, and a per-unit path with per-unit progress.
 
+**M2.5 — it has to feel like an app.** The first build was honest and looked like a
+settings page: flat cards, system fonts, no motion, no hierarchy. The rebuild is a design
+system rather than a coat of paint — a bundled rounded typeface, tactile buttons with a
+physical bottom edge, an orange accent that only marks the next action, a unit path with
+state badges, full-screen sessions with a bottom action bar, chat-shaped dialogues, a
+celebration screen with a ring and confetti, and micro-motion on every state change. The
+rule used throughout: colour means something (orange = do this, teal = you got it, rose =
+fix it), and nothing decorative is allowed to compete with the sentence being learned.
+
 Still open by design: speech recognition (M4) stays behind the offline core, and the exam
 module (inburgering task formats + KNM questions) is the next content milestone.

@@ -2,9 +2,17 @@ import { useMemo, useState } from "react";
 import type { Snapshot } from "@/types";
 import type { Registry } from "@/lib/module";
 import { isKnown } from "@/lib/fsrs";
-import { Card, Speaker, Tag } from "./ui";
+import { Icon } from "./icons";
+import { Card, Pill, Speaker } from "./ui";
 
 type Filter = "all" | "learning" | "known" | "new";
+
+const FILTERS: Array<{ id: Filter; label: string }> = [
+  { id: "all", label: "Everything" },
+  { id: "learning", label: "Learning" },
+  { id: "known", label: "Known" },
+  { id: "new", label: "New" },
+];
 
 export function WordsView({
   registry,
@@ -30,10 +38,7 @@ export function WordsView({
           const state = !card ? "new" : isKnown(card) ? "known" : "learning";
           if (filter !== "all" && state !== filter) return false;
           if (!needle) return true;
-          return (
-            ref.item.text.toLowerCase().includes(needle) ||
-            ref.item.translation.toLowerCase().includes(needle)
-          );
+          return ref.item.text.toLowerCase().includes(needle) || ref.item.translation.toLowerCase().includes(needle);
         })
         .map((ref) => ({ ref, unit: unit.unit, card: cards.get(ref.key) })),
     );
@@ -41,7 +46,14 @@ export function WordsView({
 
   return (
     <div className="screen">
-      <h1>Woorden</h1>
+      <div className="hero">
+        <div>
+          <p className="hero-eyebrow">Alles wat je hebt</p>
+          <h1 className="hero-title">Woorden</h1>
+          <p className="hero-sub">{rows.length} sentences · every row speaks</p>
+        </div>
+      </div>
+
       <input
         type="text"
         aria-label="Search sentences"
@@ -49,53 +61,58 @@ export function WordsView({
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
-      <div className="chips">
-        {(["all", "learning", "known", "new"] as Filter[]).map((option) => (
+
+      <div className="segmented" role="group" aria-label="Filter sentences">
+        {FILTERS.map((entry) => (
           <button
-            key={option}
+            key={entry.id}
             type="button"
-            className={filter === option ? "pill on" : "pill"}
-            onClick={() => setFilter(option)}
+            aria-pressed={filter === entry.id}
+            onClick={() => setFilter(entry.id)}
           >
-            {option === "all" ? "Everything" : option}
+            {entry.label}
           </button>
         ))}
       </div>
 
-      <p className="tiny muted">
-        {rows.length} sentence{rows.length === 1 ? "" : "s"} — every row speaks. Tap a row to see the literal gloss and
-        the grammar tags.
-      </p>
-
-      {rows.map(({ ref, unit, card }) => (
-        <Card key={ref.key} tight>
-          <div className="row" style={{ alignItems: "flex-start" }}>
-            <Speaker onClick={() => onPlay(ref.item.text, "", ref.key)} />
-            <button
-              type="button"
-              className="grow"
-              onClick={() => setOpenKey(openKey === ref.key ? null : ref.key)}
-              style={{ textAlign: "left" }}
-            >
-              <p className="nl small">{ref.item.text}</p>
-              <p className="small muted">{ref.item.translation}</p>
-              {openKey === ref.key ? (
-                <div className="stack" style={{ marginTop: 8 }}>
-                  {ref.item.literal ? <p className="lit">{ref.item.literal}</p> : null}
-                  <div className="chips">
-                    <Tag>{unit.title}</Tag>
-                    {ref.item.tags.map((tag) => (
-                      <Tag key={tag}>{tag}</Tag>
-                    ))}
-                    <Tag>{!card ? "new" : isKnown(card) ? "known" : `rung ${card.stage}`}</Tag>
-                  </div>
-                  {ref.item.tip ? <p className="tiny muted">{ref.item.tip}</p> : null}
-                </div>
-              ) : null}
-            </button>
-          </div>
-        </Card>
-      ))}
+      <div className="stack" style={{ gap: 10 }}>
+        {rows.map(({ ref, unit, card }) => {
+          const open = openKey === ref.key;
+          const state = !card ? "new" : isKnown(card) ? "known" : `rung ${card.stage}`;
+          return (
+            <Card key={ref.key} tight>
+              <div className="row" style={{ alignItems: "flex-start", gap: 12 }}>
+                <Speaker onClick={() => onPlay(ref.item.text, "", ref.key)} />
+                <button
+                  type="button"
+                  className="grow"
+                  onClick={() => setOpenKey(open ? null : ref.key)}
+                  style={{ textAlign: "left", background: "none", border: 0, color: "inherit", font: "inherit", padding: 0 }}
+                >
+                  <p className="nl small">{ref.item.text}</p>
+                  <p className="small muted">{ref.item.translation}</p>
+                  {open ? (
+                    <div className="stack" style={{ marginTop: 10, gap: 8 }}>
+                      {ref.item.literal ? <p className="lit">{ref.item.literal}</p> : null}
+                      <div className="chips">
+                        <Pill tone="violet">{unit.title}</Pill>
+                        {ref.item.tags.map((tag) => (
+                          <Pill key={tag}>{tag}</Pill>
+                        ))}
+                        <Pill tone={state === "known" ? "green" : undefined}>{state}</Pill>
+                      </div>
+                      {ref.item.tip ? <p className="tiny dim">{ref.item.tip}</p> : null}
+                    </div>
+                  ) : null}
+                </button>
+                <span style={{ color: "var(--dim)", transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }}>
+                  <Icon name="chevron" size={18} />
+                </span>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

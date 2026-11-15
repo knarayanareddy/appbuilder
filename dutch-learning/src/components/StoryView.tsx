@@ -1,10 +1,11 @@
 import { useState } from "react";
 import type { Story } from "@/types";
-import { Button, Card, Speaker } from "./ui";
+import { Icon } from "./icons";
+import { Button, IconButton, Speaker } from "./ui";
 
 /**
- * Delftse-methode reading: a whole dialogue first, translation on demand. The point
- * of a story is context a single sentence cannot give you.
+ * Delftse-methode reading, staged as a chat: the dialogue first, the English on demand.
+ * Context is the thing a single sentence cannot give you.
  */
 export function StoryView({
   story,
@@ -22,8 +23,7 @@ export function StoryView({
     setPlaying(true);
     for (const line of story.lines) {
       onPlay(line.text);
-      // Roughly the time it takes to speak the line, so the next one waits its turn.
-      await new Promise((resolve) => setTimeout(resolve, Math.max(1800, line.text.length * 90)));
+      await new Promise((resolve) => setTimeout(resolve, Math.max(1600, line.text.length * 82)));
     }
     setPlaying(false);
   }
@@ -31,41 +31,45 @@ export function StoryView({
   return (
     <div className="screen">
       <div className="row spread">
-        <h1>{story.title}</h1>
-        <Button small variant="ghost" onClick={onClose} ariaLabel="Close story">
-          Close
-        </Button>
+        <div>
+          <p className="hero-eyebrow">Dialoog</p>
+          <h1 className="hero-title">{story.title}</h1>
+          <p className="hero-sub">{story.situation}</p>
+        </div>
+        <IconButton name="close" label="Close story" onClick={onClose} />
       </div>
-      <p className="small muted">{story.situation}</p>
 
       <div className="row">
-        <Button onClick={() => void playAll()} disabled={playing}>
-          {playing ? "Playing…" : "Play the whole dialogue"}
+        <Button size="sm" variant="primary" icon="play" onClick={() => void playAll()} disabled={playing}>
+          {playing ? "Playing…" : "Play all"}
         </Button>
-        <Button variant="ghost" onClick={() => setShowTranslation(!showTranslation)}>
+        <Button size="sm" variant="ghost" onClick={() => setShowTranslation(!showTranslation)}>
           {showTranslation ? "Hide English" : "Show English"}
         </Button>
       </div>
 
-      <div className="stack">
-        {story.lines.map((line, index) => (
-          <Card key={`${line.speaker}-${index}`} tight>
-            <div className="row" style={{ alignItems: "flex-start" }}>
+      <div className="stack" style={{ gap: 14 }}>
+        {story.lines.map((line, index) => {
+          const you = line.speaker.toLowerCase() === "jij" || line.speaker.toLowerCase() === "you";
+          return (
+            <div key={`${line.speaker}-${index}`} className={you ? "bubble you" : "bubble them"}>
               <Speaker onClick={() => onPlay(line.text)} />
-              <div>
-                <p className="tiny muted">{line.speaker}</p>
+              <div className="bubble-body">
+                <p className="bubble-speaker">{line.speaker}</p>
                 <p className="nl small">{line.text}</p>
                 {showTranslation ? <p className="small en">{line.translation}</p> : null}
               </div>
             </div>
-          </Card>
-        ))}
+          );
+        })}
       </div>
 
-      <p className="tiny muted">
-        Read it out loud with the audio once, then again with the English hidden. When you can follow it without the
-        translation, that dialogue is yours.
-      </p>
+      <div className="card tight">
+        <p className="tiny dim">
+          <Icon name="sparkle" size={13} /> Read it out loud with the audio once, then again with the English hidden.
+          When you can follow it without the translation, that dialogue is yours.
+        </p>
+      </div>
     </div>
   );
 }

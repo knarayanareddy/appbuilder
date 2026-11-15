@@ -1,26 +1,37 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Attempt, CardState, Module, Report, Settings, Snapshot } from "@/types";
 import { appendAttempt, appendReport, loadSnapshot, saveCards, saveModules, saveSettings } from "@/lib/repo";
-import {
-  applyAnswer,
-  buildSession,
-  gradeFor,
-  type Answer,
-  type SessionItem,
-  type SessionRequest,
-} from "@/lib/session";
+import { applyAnswer, buildSession, gradeFor, type Answer, type SessionItem, type SessionRequest } from "@/lib/session";
 import { buildRegistry } from "@/lib/module";
 import { languageFor } from "@/lib/languages";
-import { inspectVoice, loadAudioIndex, openVoiceInstall, playBundled, speak, stopSpeaking, type SpeechStatus } from "@/lib/speech";
+import {
+  inspectVoice,
+  loadAudioIndex,
+  openVoiceInstall,
+  playBundled,
+  speak,
+  stopSpeaking,
+  type SpeechStatus,
+} from "@/lib/speech";
 import { LearnView } from "@/components/LearnView";
 import { WordsView } from "@/components/WordsView";
 import { ProgressView } from "@/components/ProgressView";
 import { SettingsView } from "@/components/SettingsView";
 import { StoryView } from "@/components/StoryView";
 import { SessionView, type SessionSummary } from "@/components/SessionView";
-import { Button, Card, Empty, Stat } from "@/components/ui";
+import { Icon, type IconName } from "@/components/icons";
+import { Button, Card, Empty, Ring, Stat, Toast } from "@/components/ui";
 
 type Tab = "learn" | "words" | "progress" | "settings";
+
+const TABS: Array<{ id: Tab; label: string; icon: IconName }> = [
+  { id: "learn", label: "Learn", icon: "home" },
+  { id: "words", label: "Words", icon: "book" },
+  { id: "progress", label: "Progress", icon: "chart" },
+  { id: "settings", label: "Settings", icon: "settings" },
+];
+
+const CONFETTI = ["#ff7a3d", "#3ddc97", "#8b5cf6", "#ffc64b", "#2dd4bf"];
 
 function upsertCard(cards: CardState[], card: CardState): CardState[] {
   const index = cards.findIndex((existing) => existing.itemId === card.itemId);
@@ -38,7 +49,9 @@ export default function App() {
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [storyId, setStoryId] = useState<string | null>(null);
   const [speech, setSpeech] = useState<SpeechStatus | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const toastTimer = useRef<number | null>(null);
 
   const registry = useMemo(() => buildRegistry(snapshot?.modules ?? []), [snapshot?.modules]);
   const locale = languageFor(snapshot?.settings.language ?? "nl").ttsLocale;
@@ -63,29 +76,25 @@ export default function App() {
     };
   }, [locale]);
 
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2800);
+  }, []);
+
   const play = useCallback(
     async (text: string, speakLocale = locale, key?: string) => {
       const rate = snapshot?.settings.rate ?? 1;
       if (key && (await playBundled(key, rate))) return;
       const result = await speak(text, { locale: speakLocale, rate, voiceUri: snapshot?.settings.voice ?? null });
       if (!result.ok) {
-        setSpeech({
-          locale: speakLocale,
-          supported: false,
-          voices: [],
-          error: result.error,
-        });
+        setSpeech({ locale: speakLocale, supported: false, voices: [], error: result.error });
       }
     },
     [locale, snapshot?.settings.rate, snapshot?.settings.voice],
   );
 
-  const playItem = useCallback(
-    (item: SessionItem) => {
-      void play(item.item.text, item.ttsLocale, item.key);
-    },
-    [play],
-  );
+  const playItem = useCallback((item: SessionItem) => void play(item.item.text, item.ttsLocale, item.key), [play]);
 
   const startSession = (next: SessionRequest) => {
     if (!snapshot) return;
@@ -101,8 +110,8 @@ export default function App() {
     const at = Date.now();
     const reschedule = request?.mode !== "quiz";
     const card = applyAnswer(item, result, at, snapshot.settings.desiredRetention, { reschedule });
-    // A quiz may test a sentence you have not been taught yet; record the answer but
-    // do not invent a schedule for it.
+    // A quiz may test a sentence nobody has taught yet; record the answer, do not
+    // invent a schedule for it.
     const keepCard = !(request?.mode === "quiz" && item.isNew);
     const cards = keepCard ? upsertCard(snapshot.cards, card) : snapshot.cards;
     const attempt: Attempt = {
@@ -117,7 +126,6 @@ export default function App() {
       mode: request?.mode,
     };
 
-    // Written immediately, one card at a time: a phone can die mid-session.
     setSnapshot({ ...snapshot, cards, attempts: [...snapshot.attempts, attempt] });
     await saveCards(cards);
     await appendAttempt(attempt);
@@ -131,8 +139,7 @@ export default function App() {
 
   const addModule = async (module: Module) => {
     if (!snapshot) return;
-    const others = snapshot.modules.filter((entry) => entry.id !== module.id);
-    const modules = [...others, module];
+    const modules = [...snapshot.modules.filter((entry) => entry.id !== module.id), module];
     setSnapshot({ ...snapshot, modules });
     await saveModules(modules);
   };
@@ -142,6 +149,7 @@ export default function App() {
     const modules = snapshot.modules.filter((entry) => entry.id !== moduleId);
     setSnapshot({ ...snapshot, modules });
     await saveModules(modules);
+    showToast("Module removed");
   };
 
   const report = async (item: SessionItem) => {
@@ -149,9 +157,9 @@ export default function App() {
     const note = window.prompt(`What is wrong with “${item.item.text}”?`, "");
     if (note === null) return;
     const entry: Report = { itemId: item.key, note: note.trim(), at: Date.now() };
-    const reports = [...snapshot.reports, entry];
-    setSnapshot({ ...snapshot, reports });
+    setSnapshot({ ...snapshot, reports: [...snapshot.reports, entry] });
     await appendReport(entry);
+    showToast("Reported — it is in Settings → Translation reports");
   };
 
   const finishSession = (result: SessionSummary) => {
@@ -178,7 +186,7 @@ export default function App() {
 
   if (queue) {
     return (
-      <div className="app">
+      <div className="app flush">
         <SessionView
           items={queue}
           pool={{
@@ -188,6 +196,7 @@ export default function App() {
           autoPlay={snapshot.settings.autoPlay}
           onAnswer={answer}
           onFinish={finishSession}
+          onQuit={finishSession}
           onReport={(item) => void report(item)}
           play={playItem}
         />
@@ -197,7 +206,7 @@ export default function App() {
 
   if (story) {
     return (
-      <div className="app">
+      <div className="app flush">
         <StoryView
           story={story}
           onPlay={(text) => void play(text)}
@@ -210,30 +219,47 @@ export default function App() {
     );
   }
 
+  const accuracy = summary && summary.done > 0 ? Math.round((summary.correct / summary.done) * 100) : 0;
+
   return (
     <div className="app">
       {summary ? (
         <div className="screen">
-          <h1>Session done</h1>
-          <Card>
-            <div className="grid-3">
-              <Stat value={summary.done} label="answered" />
-              <Stat value={summary.correct} label="correct" />
-              <Stat value={summary.done === 0 ? "—" : `${Math.round((summary.correct / summary.done) * 100)}%`} label="accuracy" />
+          <Card className="summary-card">
+            <div className="confetti" aria-hidden="true">
+              {Array.from({ length: 18 }, (_, index) => (
+                <i
+                  key={index}
+                  style={{
+                    left: `${(index * 37) % 100}%`,
+                    background: CONFETTI[index % CONFETTI.length],
+                    animationDelay: `${(index % 6) * 90}ms`,
+                  }}
+                />
+              ))}
             </div>
-            <p className="small" style={{ marginTop: 12 }}>
-              {summary.done > 0 && summary.correct / summary.done >= 0.85
+            <p className="hero-eyebrow">Sessie klaar</p>
+            <div style={{ display: "grid", placeItems: "center", margin: "14px 0" }}>
+              <Ring value={summary.correct} max={Math.max(1, summary.done)} label={`${accuracy}%`} sublabel="accuracy" />
+            </div>
+            <p className="small muted">
+              {summary.correct} of {summary.done} correct.{" "}
+              {accuracy >= 85
                 ? "That is the range where the schedule works."
-                : "Below 85%? Lower the daily pace in Settings, or spend a few minutes in Practise more."}
+                : "Below 85%? Lower the daily pace, or spend a few minutes in Practise more."}
             </p>
           </Card>
+          <div className="grid-3">
+            <Stat value={summary.done} label="answered" />
+            <Stat value={summary.correct} label="correct" />
+            <Stat value={summary.done - summary.correct} label="to fix" />
+          </div>
           <div className="stack">
-            <Button wide variant="primary" onClick={() => startSession(request ?? { mode: "practice" })}>
+            <Button wide size="lg" variant="primary" onClick={() => startSession(request ?? { mode: "practice" })}>
               Keep going
             </Button>
             <Button
               wide
-              variant="ghost"
               onClick={() => {
                 setSummary(null);
                 setTab("learn");
@@ -257,11 +283,7 @@ export default function App() {
       ) : null}
 
       {!summary && tab === "words" ? (
-        <WordsView
-          registry={registry}
-          snapshot={snapshot}
-          onPlay={(text, _locale, key) => void play(text, locale, key)}
-        />
+        <WordsView registry={registry} snapshot={snapshot} onPlay={(text, _locale, key) => void play(text, locale, key)} />
       ) : null}
 
       {!summary && tab === "progress" ? <ProgressView registry={registry} snapshot={snapshot} now={now} /> : null}
@@ -278,40 +300,45 @@ export default function App() {
           onTestVoice={() => void play("De fiets staat achter het station.")}
           onCheckVoice={() => void inspectVoice(locale).then(setSpeech)}
           onOpenVoiceInstall={() => void openVoiceInstall()}
+          onToast={showToast}
         />
+      ) : null}
+
+      {!speech?.supported && speech && !summary && tab === "learn" ? (
+        <Card tight>
+          <div className="row" style={{ alignItems: "flex-start" }}>
+            <span style={{ color: "var(--gold)" }}>
+              <Icon name="speaker" size={18} />
+            </span>
+            <p className="tiny grow">
+              No {locale} voice installed — audio would read {locale} with an English accent.{" "}
+              <button type="button" className="link" onClick={() => setTab("settings")}>
+                Fix it in Settings
+              </button>
+            </p>
+          </div>
+        </Card>
       ) : null}
 
       {summary ? null : (
         <nav className="nav" aria-label="Sections">
-          <button type="button" aria-current={tab === "learn" ? "page" : undefined} onClick={() => setTab("learn")}>
-            Learn
-          </button>
-          <button type="button" aria-current={tab === "words" ? "page" : undefined} onClick={() => setTab("words")}>
-            Words
-          </button>
-          <button type="button" aria-current={tab === "progress" ? "page" : undefined} onClick={() => setTab("progress")}>
-            Progress
-          </button>
-          <button type="button" aria-current={tab === "settings" ? "page" : undefined} onClick={() => setTab("settings")}>
-            Settings
-          </button>
+          {TABS.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              aria-current={tab === entry.id ? "page" : undefined}
+              onClick={() => setTab(entry.id)}
+            >
+              <Icon name={entry.icon} size={20} />
+              {entry.label}
+            </button>
+          ))}
         </nav>
       )}
 
-      {!speech?.supported && speech && !summary && tab !== "settings" ? (
-        <div className="screen" style={{ paddingTop: 0 }}>
-          <Card tight>
-            <p className="tiny">
-              No {locale} voice found on this device, so audio will be silent or read with an English accent.{" "}
-              <button type="button" className="link" onClick={() => setTab("settings")}>
-                Fix the voice in Settings →
-              </button>
-            </p>
-          </Card>
-        </div>
-      ) : null}
-
       {registry.items.size === 0 ? <Empty title="No sentences loaded.">Import a module in Settings.</Empty> : null}
+
+      {toast ? <Toast message={toast} /> : null}
     </div>
   );
 }

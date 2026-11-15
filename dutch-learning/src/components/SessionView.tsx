@@ -12,7 +12,8 @@ import {
   sameSequence,
   splitWords,
 } from "@/lib/text";
-import { Button, Card, Chip, Empty, Option, Speaker, Tag } from "./ui";
+import { Icon, type IconName } from "./icons";
+import { Button, Card, Chip, Empty, IconButton, Option, Speaker } from "./ui";
 
 const KIND_LABEL: Record<CardKind, string> = {
   study: "Read and listen",
@@ -21,6 +22,15 @@ const KIND_LABEL: Record<CardKind, string> = {
   bank: "Build the sentence",
   listen: "Dictation",
   produce: "Say it in Dutch",
+};
+
+const KIND_ICON: Record<CardKind, IconName> = {
+  study: "book",
+  cloze: "pencil",
+  choice: "target",
+  bank: "puzzle",
+  listen: "speaker",
+  produce: "sparkle",
 };
 
 const KIND_HINT: Record<CardKind, string> = {
@@ -49,6 +59,7 @@ export function SessionView({
   onAnswer,
   onFinish,
   onReport,
+  onQuit,
   play,
 }: {
   items: SessionItem[];
@@ -57,6 +68,7 @@ export function SessionView({
   onAnswer: (item: SessionItem, answer: Answer, typed: string, ms: number) => Promise<void> | void;
   onFinish: (summary: SessionSummary) => void;
   onReport: (item: SessionItem) => void;
+  onQuit: (summary: SessionSummary) => void;
   play: (item: SessionItem) => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -87,7 +99,7 @@ export function SessionView({
   useEffect(() => {
     if (!item || !autoPlay) return;
     if (item.kind !== "listen" && item.kind !== "study") return;
-    const timer = setTimeout(() => play(item), 300);
+    const timer = setTimeout(() => play(item), 320);
     return () => clearTimeout(timer);
   }, [item, autoPlay, play]);
 
@@ -105,9 +117,9 @@ export function SessionView({
     return (
       <div className="screen">
         <Empty title="Nothing queued.">
-          That is everything for this mode right now. Pick another mode from the Learn tab.
+          Everything in this mode is done. Pick another way in from Learn — Practise never runs out.
         </Empty>
-        <Button wide onClick={() => onFinish({ done, correct })}>
+        <Button wide variant="primary" onClick={() => onFinish({ done, correct })}>
           Done
         </Button>
       </div>
@@ -137,14 +149,13 @@ export function SessionView({
 
   function checkBank() {
     if (!item) return;
-    const ok = sameSequence(picked, splitWords(item.item.text));
-    settle({ correct: ok, almost: false }, picked.join(" "));
+    settle({ correct: sameSequence(picked, splitWords(item.item.text)), almost: false }, picked.join(" "));
   }
 
   function chooseOption(option: string) {
+    if (!item) return;
     setSelected(option);
-    const ok = normalise(option) === normalise(item.item.translation);
-    settle({ correct: ok, almost: false }, option);
+    settle({ correct: normalise(option) === normalise(item.item.translation), almost: false }, option);
   }
 
   async function next() {
@@ -165,69 +176,75 @@ export function SessionView({
     setIndex(index + 1);
   }
 
-  const tokens = judged && !judged.correct && (item.kind === "listen" || item.kind === "produce" || item.kind === "cloze")
-    ? feedback(typed, expected)
-    : null;
+  const tokens =
+    judged && !judged.correct && (item.kind === "listen" || item.kind === "produce" || item.kind === "cloze")
+      ? feedback(typed, expected)
+      : null;
+
+  const percent = Math.round((index / items.length) * 100);
 
   return (
     <div className="screen">
-      <div className="progress">
-        <span>
+      <div className="session-top">
+        <IconButton name="close" label="Leave the session" onClick={() => onQuit({ done, correct })} />
+        <div className="bar">
+          <i style={{ width: `${percent}%` }} />
+        </div>
+        <span className="pill" aria-label="Progress">
           {index + 1}/{items.length}
         </span>
-        <div className="bar">
-          <i style={{ width: `${Math.round((index / items.length) * 100)}%` }} />
-        </div>
-        <span>{KIND_LABEL[item.kind]}</span>
+      </div>
+
+      <div className="session-meta">
+        <span className="kind-chip">
+          <Icon name={KIND_ICON[item.kind]} size={13} />
+          {KIND_LABEL[item.kind]}
+        </span>
+        <button type="button" className="link" onClick={() => onReport(item)}>
+          Report
+        </button>
       </div>
 
       <Card>
-        <div className="row spread" style={{ marginBottom: 10 }}>
-          <Tag>{item.unit.title}</Tag>
-          <button type="button" className="link" onClick={() => onReport(item)}>
-            Report
-          </button>
-        </div>
-
         {item.kind === "study" ? (
           <div className="stack">
-            <div className="row">
-              <Speaker onClick={() => play(item)} />
-              <p className="nl">{item.item.text}</p>
+            <div className="row" style={{ alignItems: "center", gap: 14 }}>
+              <Speaker big onClick={() => play(item)} />
+              <p className="display">{item.item.text}</p>
             </div>
             {revealed ? (
               <div className="stack">
                 <p className="en">{item.item.translation}</p>
                 {item.item.literal ? <p className="lit">{item.item.literal}</p> : null}
-                {item.item.tip ? <p className="small muted">{item.item.tip}</p> : null}
-                {item.unit.tip ? <p className="small muted">Tip: {item.unit.tip}</p> : null}
+                {item.item.tip ? <p className="tiny dim">{item.item.tip}</p> : null}
+                {item.unit.tip ? <p className="tiny dim">Tip: {item.unit.tip}</p> : null}
               </div>
             ) : (
-              <p className="muted small">{KIND_HINT.study}</p>
+              <p className="small muted">{KIND_HINT.study}</p>
             )}
           </div>
         ) : null}
 
         {item.kind === "cloze" && cloze ? (
           <div className="stack">
-            <div className="row">
+            <div className="row" style={{ alignItems: "center", gap: 14 }}>
               <Speaker onClick={() => play(item)} />
-              <p className="nl small cloze">
+              <p className="display small cloze">
                 <span>{cloze.before}</span>
                 <span className="blank">{maskWord(cloze.word)}</span>
                 <span>{cloze.after}</span>
               </p>
             </div>
-            <p className="muted small">{KIND_HINT.cloze}</p>
+            <p className="small muted">{KIND_HINT.cloze}</p>
             {revealed ? <p className="en small">{item.item.translation}</p> : null}
           </div>
         ) : null}
 
         {item.kind === "choice" ? (
           <div className="stack">
-            <div className="row">
+            <div className="row" style={{ alignItems: "center", gap: 14 }}>
               <Speaker onClick={() => play(item)} />
-              <p className="nl small">{item.item.text}</p>
+              <p className="display small">{item.item.text}</p>
             </div>
             <div className="stack">
               {options.map((option) => (
@@ -252,15 +269,12 @@ export function SessionView({
 
         {item.kind === "bank" ? (
           <div className="stack">
-            <p className="nl small">{item.item.translation}</p>
-            <p className="muted small">{KIND_HINT.bank}</p>
+            <p className="display small">{item.item.translation}</p>
+            <p className="small muted">{KIND_HINT.bank}</p>
             <div className="bank built" aria-label="Your sentence">
-              {picked.length === 0 ? <span className="tiny muted">Tap words below…</span> : null}
+              {picked.length === 0 ? <span className="tiny dim">Tap the words below…</span> : null}
               {picked.map((word, position) => (
-                <Chip
-                  key={`${word}-${position}`}
-                  onClick={() => setPicked(picked.filter((_, index_) => index_ !== position))}
-                >
+                <Chip key={`${word}-${position}`} onClick={() => setPicked(picked.filter((_, i) => i !== position))}>
                   {word}
                 </Chip>
               ))}
@@ -288,11 +302,11 @@ export function SessionView({
 
         {item.kind === "listen" ? (
           <div className="stack">
-            <div className="row">
-              <Speaker onClick={() => play(item)} />
+            <div className="row" style={{ alignItems: "center", gap: 14 }}>
+              <Speaker big onClick={() => play(item)} />
               <div>
-                <p className="nl small">{KIND_HINT.listen}</p>
-                <p className="muted small">Dutch, spoken by the phone's own voice.</p>
+                <p className="display small">{KIND_HINT.listen}</p>
+                <p className="small muted">Dutch, in the voice you picked.</p>
               </div>
             </div>
             {revealed ? <p className="en small">{item.item.translation}</p> : null}
@@ -301,8 +315,8 @@ export function SessionView({
 
         {item.kind === "produce" ? (
           <div className="stack">
-            <p className="nl small">{item.item.translation}</p>
-            <p className="muted small">{KIND_HINT.produce}</p>
+            <p className="display small">{item.item.translation}</p>
+            <p className="small muted">{KIND_HINT.produce}</p>
             {revealed ? <p className="lit">{item.item.literal}</p> : null}
           </div>
         ) : null}
@@ -325,21 +339,22 @@ export function SessionView({
             }}
             disabled={phase === "feedback"}
           />
-          <div className="row" style={{ marginTop: 8 }}>
-            <Button small variant="ghost" onClick={() => setRevealed(true)} disabled={revealed}>
+          <div className="row spread" style={{ marginTop: 9 }}>
+            <Button size="sm" variant="ghost" onClick={() => setRevealed(true)} disabled={revealed}>
               Hint
             </Button>
-            <span className="tiny muted">{expected.length} letters expected</span>
+            <span className="tiny dim">{expected.length} letters</span>
           </div>
         </Card>
       ) : null}
 
       {phase === "feedback" && judged ? (
         <div className={judged.correct ? "feedback good" : "feedback bad"}>
-          <p className="small" style={{ fontWeight: 700 }}>
+          <p className="verdict">
+            <Icon name={judged.correct ? "check" : "close"} size={18} />
             {judged.correct ? (judged.almost ? "Almost — that counts." : "Goed zo.") : "Not quite."}
           </p>
-          <p className="small" style={{ marginTop: 4 }}>
+          <p className="small" style={{ marginTop: 6 }}>
             {item.kind === "choice" && judged.correct
               ? `${item.item.text} — ${item.item.translation}`
               : judged.correct && !judged.almost
@@ -356,42 +371,37 @@ export function SessionView({
             </p>
           ) : null}
           {item.kind !== "choice" && judged.correct ? (
-            <p className="tiny muted" style={{ marginTop: 6 }}>
-              {item.item.literal ? `${item.item.literal}` : item.item.translation}
+            <p className="tiny dim" style={{ marginTop: 6 }}>
+              {item.item.literal ?? item.item.translation}
             </p>
           ) : null}
-          {!judged.correct && typed.trim().length > 0 && item.kind !== "choice" ? (
-            <p className="tiny muted" style={{ marginTop: 6 }}>
-              You typed: {normalise(typed) || "—"}
-            </p>
-          ) : null}
-          {!judged.correct && item.item.tip ? <p className="tiny muted">{item.item.tip}</p> : null}
+          {!judged.correct && item.item.tip ? <p className="tiny dim" style={{ marginTop: 6 }}>{item.item.tip}</p> : null}
         </div>
       ) : null}
 
-      <div className="stack" style={{ marginTop: "auto" }}>
+      <div className="action-bar">
         {phase === "ask" ? (
           item.kind === "study" ? (
             <>
               {!revealed ? (
-                <Button wide onClick={() => setRevealed(true)}>
+                <Button wide size="lg" onClick={() => setRevealed(true)}>
                   Show meaning
                 </Button>
               ) : null}
-              <Button wide variant={revealed ? "primary" : "default"} onClick={() => void next()}>
+              <Button wide size="lg" variant={revealed ? "primary" : "ghost"} onClick={() => void next()}>
                 Next
               </Button>
             </>
           ) : item.kind === "choice" ? (
-            <p className="tiny muted" style={{ textAlign: "center" }}>
+            <p className="tiny dim" style={{ textAlign: "center" }}>
               Tap an answer.
             </p>
           ) : item.kind === "bank" ? (
-            <Button wide variant="primary" onClick={checkBank} disabled={picked.length === 0}>
+            <Button wide size="lg" variant="primary" onClick={checkBank} disabled={picked.length === 0}>
               Check
             </Button>
           ) : (
-            <Button wide variant="primary" onClick={checkTyped} disabled={typed.trim().length === 0}>
+            <Button wide size="lg" variant="primary" onClick={checkTyped} disabled={typed.trim().length === 0}>
               Check
             </Button>
           )
@@ -409,7 +419,7 @@ export function SessionView({
                 I was right (typo)
               </Button>
             ) : null}
-            <Button wide variant="primary" onClick={() => void next()}>
+            <Button wide size="lg" variant="primary" onClick={() => void next()}>
               Next
             </Button>
           </>
