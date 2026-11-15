@@ -2,7 +2,7 @@ import { useState } from "react";
 import { KeyRound, MapPin, Pencil, Trash2 } from "lucide-react";
 import { Badge, Button, Chip, Notice, Sheet } from "./ui";
 import { PhotoThumb } from "./PhotoThumb";
-import { keysForBike, slotById } from "@/lib/model";
+import { keysForBike, placeLabelOf, slotById } from "@/lib/model";
 import {
   BIKE_STATUSES,
   STATUS_LABEL,
@@ -24,13 +24,14 @@ export const BikeDetail = ({ snapshot, bike, onClose, onEdit, onDelete, onSetSta
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const slot = slotById(snapshot, bike.slotId);
   const keys = keysForBike(snapshot, bike);
+  const written = bike.place.trim();
 
   return (
     <Sheet
       open
       onClose={onClose}
       title={bike.name}
-      subtitle={slot ? `Place ${slot.code}` : "No place assigned"}
+      subtitle={written ? undefined : slot ? `Numbered place ${slot.code}` : "No place recorded yet"}
       footer={
         <div className="flex gap-2">
           <Button variant="secondary" className="flex-1" onClick={() => onEdit(bike)}>
@@ -78,12 +79,18 @@ export const BikeDetail = ({ snapshot, bike, onClose, onEdit, onDelete, onSetSta
           </figure>
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-2.5">
-          <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
-            <MapPin size={14} className="text-slate-400" />
-            {slot ? `${slot.code}` : "Not in a place"}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+          <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <MapPin size={12} /> Where it is
           </p>
-          {slot ? <p className="mt-0.5 text-[11px] text-slate-500">Zone {slot.zone}</p> : null}
+          <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-800">
+            {placeLabelOf(snapshot, bike)}
+          </p>
+          {slot ? (
+            <p className="mt-1.5 text-[11px] font-semibold text-slate-500">
+              Numbered place {slot.code} · zone {slot.zone}
+            </p>
+          ) : null}
         </div>
 
         <div>

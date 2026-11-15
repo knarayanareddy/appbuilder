@@ -164,6 +164,7 @@ export function decodeBackup(raw: unknown): DecodedBackup {
       return {
         id: asString(b.id),
         name: asString(b.name).trim(),
+        place: asString(b.place),
         slotId,
         keyIds: asStringArray(b.keyIds).filter((id) => keyIds.has(id)),
         tags: asStringArray(b.tags).map((t) => t.trim()).filter(Boolean),

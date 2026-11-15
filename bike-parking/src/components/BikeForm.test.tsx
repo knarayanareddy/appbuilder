@@ -18,6 +18,29 @@ describe("BikeForm", () => {
     expect(save).toBeDisabled();
   });
 
+  it("saves a long written place without truncating it", async () => {
+    const user = userEvent.setup();
+    const snapshot = testSnapshot();
+    const onSave = vi.fn().mockResolvedValue({});
+    render(<BikeForm snapshot={snapshot} onClose={vi.fn()} onSave={onSave} />);
+
+    const place = "Back left corner, behind the blue container — third rack from the wall, top hook.";
+    await user.type(screen.getByLabelText(/Bike name/i), "Blue Gazelle");
+    await user.type(screen.getByLabelText(/Where is it/i), place);
+    await user.click(screen.getByRole("button", { name: /Save bike/i }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect((onSave.mock.calls[0][0] as BikeDraft).place).toBe(place);
+  });
+
+  it("works with no numbered places at all", () => {
+    const snapshot = { ...testSnapshot(), slots: [] };
+    render(<BikeForm snapshot={snapshot} onClose={vi.fn()} onSave={vi.fn()} />);
+
+    expect(screen.getByLabelText(/Where is it/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Numbered place/i)).not.toBeInTheDocument();
+  });
+
   it("saves the name, a free place, a key and tags", async () => {
     const user = userEvent.setup();
     const snapshot = testSnapshot();
@@ -28,7 +51,7 @@ describe("BikeForm", () => {
     await user.type(screen.getByLabelText(/Bike name/i), "Blue Gazelle");
 
     // A-03 is the only free place in the fixture.
-    await user.selectOptions(screen.getByLabelText(/Place in the lot/i), snapshot.slots[2].id);
+    await user.selectOptions(screen.getByLabelText(/Numbered place/i), snapshot.slots[2].id);
 
     await user.click(screen.getByRole("button", { name: /Blue Abus/i }));
     await user.click(screen.getByRole("button", { name: /Out riding/i }));
@@ -41,6 +64,7 @@ describe("BikeForm", () => {
     const draft = onSave.mock.calls[0][0] as BikeDraft;
     expect(draft).toMatchObject({
       name: "Blue Gazelle",
+      place: "",
       slotId: snapshot.slots[2].id,
       keyIds: [snapshot.keys[0].id],
       tags: ["holiday bike"],
@@ -53,11 +77,12 @@ describe("BikeForm", () => {
     const snapshot = testSnapshot();
     render(<BikeForm snapshot={snapshot} onClose={vi.fn()} onSave={vi.fn()} />);
 
-    const select = screen.getByLabelText(/Place in the lot/i) as HTMLSelectElement;
+    const select = screen.getByLabelText(/Numbered place/i) as HTMLSelectElement;
     const labels = Array.from(select.options).map((option) => option.textContent);
 
     expect(labels).toContain("A-03 · zone A");
     expect(labels).not.toContain("A-01 · zone A");
+    expect(labels[0]).toMatch(/Not assigned/i);
   });
 
   it("keeps the bike's own place selectable while editing", () => {
@@ -65,7 +90,7 @@ describe("BikeForm", () => {
     const bike = snapshot.bikes[0]; // Gazelle, in A-01
     render(<BikeForm snapshot={snapshot} bike={bike} onClose={vi.fn()} onSave={vi.fn()} />);
 
-    const select = screen.getByLabelText(/Place in the lot/i) as HTMLSelectElement;
+    const select = screen.getByLabelText(/Numbered place/i) as HTMLSelectElement;
     const labels = Array.from(select.options).map((option) => option.textContent);
 
     expect(labels).toContain("A-01 · zone A");
@@ -84,7 +109,7 @@ describe("BikeForm", () => {
       />
     );
 
-    const select = screen.getByLabelText(/Place in the lot/i) as HTMLSelectElement;
+    const select = screen.getByLabelText(/Numbered place/i) as HTMLSelectElement;
     expect(select.value).toBe(snapshot.slots[2].id);
   });
 

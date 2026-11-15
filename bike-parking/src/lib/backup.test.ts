@@ -33,6 +33,7 @@ function fixture() {
   };
   const bike = makeBike({
     name: "Gazelle",
+    place: "Behind the blue container, third rack from the wall",
     slotId: slots[0].id,
     keyIds: [key.id],
     tags: ["road"],
@@ -86,11 +87,25 @@ describe("encodeBackup / decodeBackup", () => {
 
     const decoded = decodeBackup(JSON.parse(JSON.stringify(file)));
     expect(decoded.snapshot.bikes[0].name).toBe("Gazelle");
+    expect(decoded.snapshot.bikes[0].place).toBe("Behind the blue container, third rack from the wall");
     expect(decoded.snapshot.slots).toHaveLength(2);
     expect(decoded.snapshot.keys[0].keptAt).toBe("hook 3");
     expect(decoded.snapshot.settings.lastBackupAt).toBe(900);
     expect(readBytes(decoded.photos[0].data)).toBe("fake-jpeg-bytes");
     expect(decoded.photos[0].mimeType).toBe("image/jpeg");
+  });
+
+  it("restores a backup that has no written places (older exports)", () => {
+    const decoded = decodeBackup({
+      kind: BACKUP_KIND,
+      version: 1,
+      slots: [],
+      keys: [],
+      bikes: [{ id: "b1", name: "Old export bike" }],
+      photos: [],
+      settings: {},
+    });
+    expect(decoded.snapshot.bikes[0].place).toBe("");
   });
 
   it("refuses a file from another app", () => {

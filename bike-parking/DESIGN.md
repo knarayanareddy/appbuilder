@@ -199,6 +199,25 @@ in a backend and a privacy story you don't want.
    `A-01`, `A-02`, …, the grid will be a map of a place that does not exist. Label the
    racks first; the app is then a five-second lookup instead of a ten-minute walk.
 
+## 9. Revision — places in your own words
+
+Follow-up from the owner: *"let me manually enter the place in the lot, it doesn't follow
+your schema, and I can be verbose about it."* Correct call, and it changes the design:
+
+- **`Bike.place` is free text and is the primary location.** No codes, no validation, no
+  reformatting, no length limit. It is shown verbatim (wrapping, not truncated) in the bike
+  page and in the place cards.
+- **Numbering became optional.** First launch offers "describe places in words" (no setup at
+  all) or "numbered places" (the grid from section 3.1). The Lot screen has two modes: a
+  searchable list of written places, or the grid. Numbered places can be added or removed
+  later without losing a single written description.
+- **Section 3.1 was right about the trade-off, wrong about the default.** A grid is a better
+  interface *if* the racks are labelled; if they are not, forcing the schema up front is
+  pure friction. So the schema is now an opt-in layer on top of the written truth rather
+  than the thing the data model is built around.
+- **Search was made explicit and wider**: name, tags, notes, place description, key label —
+  every word of the query must appear in any order, so "flat tyre" matches "flat rear tyre".
+
 ### Deliberately not built
 
 Cloud sync, accounts, sharing, notifications, and encryption. Each one either contradicts

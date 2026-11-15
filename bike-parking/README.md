@@ -4,11 +4,28 @@ An offline inventory for a bike parking lot: which bike is in which place, which
 opens it, and a photo of both the bike and the place. Built for Android, installable as a
 real APK, and it never touches the network.
 
+**Places are free text.** You write where a bike is in your own words — as long as you
+like — with no schema, no codes and no setup. Numbered places (`A-01 …`) are an optional
+extra for lots that already have numbers painted on the racks.
+
 **Why it exists:** 40–60 bikes, 100 places, and no memory of where any individual bike
-stands. A text list solves half of it. A tappable map of the lot, with a photo of each
-place, solves the other half — including the question you ask when a spare place is
-needed ("what's free?") and the one you ask with a key in your hand ("what does this
-open?").
+stands. The app answers three questions: *where is this bike* (written description + photo),
+*what does this key open* (keys are records), and *what do I have that is tagged/noted like
+this* (search across name, tags and notes).
+
+## Finding a bike
+
+There is a search field at the top of both the **Lot** and **Bikes** screens. It matches:
+
+- the bike **name**
+- any **tag** you attached (`kids`, `road`, `on loan to Ana`)
+- **anything written in the notes** (`flat rear tyre`, `needs brake pads`)
+- the **place description** you wrote
+- a **key label** or where the key is kept
+
+Every word you type must appear somewhere on the bike, in any order — so `flat tyre` finds a
+note that reads *"flat rear tyre, needs a new tube"*. Nothing is sent anywhere; the search
+runs over the records on the phone.
 
 This folder is self-contained: its own `package.json`, its own build, its own tests. It
 imports nothing from the root ProCam app, and the root app imports nothing from here.
@@ -108,9 +125,9 @@ src/
 ### The model
 
 ```
-Slot   code ("B-07") · zone · index · note
-Bike   name · slot → Slot · keyIds → Key[] · tags[] · status · notes ·
-       bikePhotoId · slotPhotoId
+Bike   name · place (free text, any length) · slotId → Slot | null (optional) ·
+       keyIds → Key[] · tags[] · status · notes · bikePhotoId · slotPhotoId
+Slot   code ("B-07") · zone · index · note        ← only if you opt into numbering
 Key    label ("Blue Abus #12") · keptAt ("hook 3, left wall") · note
 ```
 
@@ -124,10 +141,17 @@ Two decisions worth knowing:
   place (the bike keeps its last known place for history). Otherwise the lot grid would
   show empty holes every time someone cycled home.
 
-Place codes are generated from a compact layout string (`A=25, B=25, C=25, D=25` → A-01 …
-D-25). Changing the layout keeps the id of every place whose code survives, so bikes are
-not silently unassigned; any bike whose place disappears is unassigned and reported, never
-deleted.
+The place you write is the primary location and is never reformatted, shortened or
+validated — “behind the blue container, third rack from the wall, top hook” is stored
+exactly as typed. The numbered place is a separate, optional pointer used only for the
+grid view.
+
+On first launch you choose between the two: **Option 1** skips numbering entirely and the
+Lot screen becomes a searchable list of the places you wrote; **Option 2** generates place
+codes from a compact layout string (`A=25, B=25, C=25, D=25` → A-01 … D-25) and shows a
+grid. Changing the layout keeps the id of every place whose code survives; a bike whose
+numbered place disappears is unassigned and reported, never deleted, and its written
+description is untouched.
 
 ### Photos
 
@@ -139,11 +163,14 @@ varies between storage engines).
 
 ### Tests
 
-85 tests across the pure model, the storage layer, backup round-trips, and the UI
-(onboarding → layout → add bike → reopen). `fake-indexeddb` stands in for the device
-database. Notable cases covered: a sold bike frees its place, a deleted key detaches from
-every bike, a layout change that removes places reports the affected bikes, a corrupt photo
-in a backup does not sink the restore, and a reload reads the inventory back from disk.
+107 tests across the pure model, the storage layer, backup round-trips, and the UI
+(onboarding → add bike → search → reopen). `fake-indexeddb` stands in for the device
+database. Notable cases covered: a long written place is stored verbatim, search finds a
+bike by name, tag, note or place description, multi-word search matches in any order, the
+words-only mode never asks for a layout, a sold bike frees its numbered place, a deleted key
+detaches from every bike, a layout change that removes places reports the affected bikes, a
+corrupt photo in a backup does not sink the restore, and a reload reads everything back
+from disk.
 
 Not covered by tests: real camera capture and real canvas downscaling (both need a browser),
 and the Capacitor filesystem/share calls (they need a device).
@@ -157,7 +184,6 @@ and the Capacitor filesystem/share calls (they need a device).
 - **Restore replaces everything.** Merge-on-restore would be a future nicety.
 - **The data is not encrypted.** Anyone with the unlocked phone can read it. Fine for
   frames in a shed; revisit if you ever store serial numbers and purchase prices.
-- **Slot codes are only as good as the physical labels.** Write `A-01 …` on the racks if
-  they are not already marked; a code you can read while standing in front of it beats any
-  search field.
+- **If you do use numbered places, the codes are only as good as the physical labels.**
+  Numbering is optional; write the codes on the racks only if you actually use the grid.
 - Debug APK only, as above.

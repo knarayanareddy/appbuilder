@@ -17,7 +17,8 @@ export async function loadSnapshot(): Promise<InventorySnapshot> {
   ]);
 
   return {
-    bikes,
+    // Records written before free-text places existed get an empty place.
+    bikes: bikes.map((bike) => ({ ...bike, place: bike.place ?? "" })),
     keys,
     slots: slots.sort((a, b) => (a.zone === b.zone ? a.index - b.index : a.zone.localeCompare(b.zone))),
     settings: settingsRows[0] ?? { ...DEFAULT_SETTINGS },

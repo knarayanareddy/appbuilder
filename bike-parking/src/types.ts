@@ -5,7 +5,13 @@ export type BikeStatus = "stored" | "out" | "service" | "sold";
 export interface Bike {
   id: ID;
   name: string;
-  /** Slot the bike lives in. Null = not assigned yet. */
+  /**
+   * Where the bike is, in your own words. Deliberately free text: "behind the
+   * blue container, third rack from the wall, top hook". No schema, no codes
+   * unless you want them — this is the primary way to record a place.
+   */
+  place: string;
+  /** Optional link to a numbered place, only if you set numbered places up. */
   slotId: ID | null;
   /** Keys that fit this bike. Many-to-many — one key can open several bikes. */
   keyIds: ID[];

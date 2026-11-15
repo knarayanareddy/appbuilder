@@ -128,6 +128,7 @@ export default function App() {
             snapshot={snapshot}
             onOpenBike={(bikeId) => setDetailId(bikeId)}
             onAddBikeAtSlot={(slotId) => setForm({ slotId })}
+            onAddBike={() => setForm({})}
           />
         ) : null}
 

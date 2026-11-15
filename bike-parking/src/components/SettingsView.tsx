@@ -134,11 +134,13 @@ export function SettingsView({ snapshot, onEditLayout, onBackup, onRestore, phot
           </h2>
           <Badge tone="sky">{snapshot.slots.length} places</Badge>
         </header>
-        <p className="mb-2 text-[11px] text-slate-600">
-          {zoneSummary || "No zones yet"}
+        <p className="mb-2 text-[11px] leading-relaxed text-slate-600">
+          {snapshot.slots.length > 0
+            ? zoneSummary
+            : "You record places in your own words on each bike — no numbering needed. Add numbered places only if the lot has numbers painted on it."}
         </p>
         <Button variant="secondary" className="w-full" onClick={onEditLayout}>
-          Edit zones and places
+          {snapshot.slots.length > 0 ? "Edit zones and places" : "Add numbered places"}
         </Button>
       </section>
 

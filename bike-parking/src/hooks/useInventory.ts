@@ -20,6 +20,8 @@ import type { Bike, BikeStatus, ID, InventorySnapshot, LotKey, ZoneSpec } from "
 export interface BikeDraft {
   id?: ID;
   name: string;
+  /** Free-text place, in the user's own words. */
+  place: string;
   slotId: ID | null;
   keyIds: ID[];
   tags: string[];
@@ -159,6 +161,7 @@ export function useInventory() {
         const bike: Bike = {
           ...base,
           name: draft.name.trim(),
+          place: draft.place.trim(),
           slotId: draft.slotId,
           keyIds: Array.from(new Set(draft.keyIds)),
           tags: normalizeTags(draft.tags),

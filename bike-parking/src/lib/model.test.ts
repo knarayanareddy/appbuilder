@@ -3,6 +3,8 @@ import {
   applyZones,
   allTags,
   bikesForKey,
+  bikesGroupedByPlace,
+  placeLabelOf,
   emptySnapshot,
   freeSlots,
   keysForBike,
@@ -25,6 +27,7 @@ function scene(): InventorySnapshot {
 
   const gazelle = makeBike({
     name: "Gazelle",
+    place: "Behind the blue container, third rack from the wall",
     slotId: slots[0].id,
     keyIds: [blueKey.id],
     tags: ["road"],
@@ -121,6 +124,10 @@ describe("searchBikes", () => {
     expect(searchBikes(scene(), { text: "kitchen" }).map((b) => b.name)).toEqual(["Kids BMX"]);
   });
 
+  it("matches the place description you wrote", () => {
+    expect(searchBikes(scene(), { text: "container" }).map((b) => b.name)).toEqual(["Gazelle"]);
+  });
+
   it("matches notes and tags", () => {
     expect(searchBikes(scene(), { text: "squeals" }).map((b) => b.name)).toEqual(["Gazelle"]);
     expect(searchBikes(scene(), { tag: "kids" }).map((b) => b.name)).toEqual(["Kids BMX"]);
@@ -130,8 +137,50 @@ describe("searchBikes", () => {
     expect(searchBikes(scene(), { status: "sold" }).map((b) => b.name)).toEqual(["Old racer"]);
   });
 
+  it("matches every word of a multi-word query, in any order", () => {
+    const snapshot = scene();
+    const withNote = withBike(snapshot, {
+      ...snapshot.bikes[0],
+      notes: "flat rear tyre, needs a new tube",
+    });
+    expect(searchBikes(withNote, { text: "flat tyre" }).map((b) => b.name)).toEqual(["Gazelle"]);
+    expect(searchBikes(withNote, { text: "tyre flat" }).map((b) => b.name)).toEqual(["Gazelle"]);
+    expect(searchBikes(withNote, { text: "flat chain" })).toHaveLength(0);
+  });
+
   it("returns everything when the query is empty", () => {
     expect(searchBikes(scene(), {})).toHaveLength(4);
+  });
+});
+
+describe("place helpers", () => {
+  it("shows the written place", () => {
+    const snapshot = scene();
+    expect(placeLabelOf(snapshot, snapshot.bikes[0])).toBe("Behind the blue container, third rack from the wall");
+  });
+
+  it("falls back to the numbered place, then to an honest default", () => {
+    const snapshot = scene();
+    const numberedOnly = { ...snapshot.bikes[1], place: "" };
+    expect(placeLabelOf(snapshot, numberedOnly)).toBe("A-02");
+    expect(placeLabelOf(snapshot, { ...numberedOnly, slotId: null })).toBe("Not placed yet");
+  });
+
+  it("groups bikes by written place, brightest descriptions first, unplaced last", () => {
+    const snapshot = scene();
+    const groups = bikesGroupedByPlace(snapshot);
+    expect(groups.map((g) => g.place)).toEqual([
+      "Behind the blue container, third rack from the wall",
+      "Not placed yet",
+    ]);
+    expect(groups[1].bikes.map((b) => b.name)).toEqual(["Folder bike", "Kids BMX", "Old racer"]);
+  });
+
+  it("narrows the groups with a search", () => {
+    const snapshot = scene();
+    const groups = bikesGroupedByPlace(snapshot, { text: "kids" });
+    expect(groups).toHaveLength(1);
+    expect(groups[0].bikes.map((b) => b.name)).toEqual(["Kids BMX"]);
   });
 });
 

@@ -20,6 +20,7 @@ export function makeBike(partial: Partial<Bike> = {}): Bike {
   return {
     id: partial.id ?? newId(),
     name: partial.name?.trim() ?? "",
+    place: partial.place?.trim() ?? "",
     slotId: partial.slotId ?? null,
     keyIds: partial.keyIds ?? [],
     tags: partial.tags ?? [],
@@ -103,8 +104,28 @@ export function bikesForKey(snapshot: InventorySnapshot, keyId: string): Bike[] 
   return snapshot.bikes.filter((b) => b.keyIds.includes(keyId)).sort(byName);
 }
 
+/**
+ * The place as it should be shown: your own words first, then the optional
+ * numbered place, then an honest "not placed yet".
+ */
+export function placeLabelOf(snapshot: InventorySnapshot, bike: Bike): string {
+  const written = bike.place.trim();
+  if (written) return written;
+  const code = slotById(snapshot, bike.slotId)?.code;
+  return code ?? "Not placed yet";
+}
+
+/** Short label for lists: the free text first line, or the numbered code. */
+export function shortPlaceOf(snapshot: InventorySnapshot, bike: Bike): string {
+  const written = bike.place.trim();
+  const code = slotById(snapshot, bike.slotId)?.code;
+  if (written && code) return `${code} · ${written.split("\n")[0]}`;
+  if (written) return written.split("\n")[0];
+  return code ?? "Not placed yet";
+}
+
 export function slotLabelOf(snapshot: InventorySnapshot, bike: Bike): string {
-  return slotById(snapshot, bike.slotId)?.code ?? "No slot";
+  return slotById(snapshot, bike.slotId)?.code ?? "Not placed yet";
 }
 
 export function zonesOf(snapshot: InventorySnapshot): string[] {
@@ -134,6 +155,9 @@ export interface BikeQuery {
  */
 export function searchBikes(snapshot: InventorySnapshot, query: BikeQuery = {}): Bike[] {
   const text = (query.text ?? "").trim().toLowerCase();
+  // Every word must appear, in any order: searching "flat tyre" finds a note
+  // that says "flat rear tyre", which is how people actually remember things.
+  const tokens = text.split(/\s+/).filter(Boolean);
   const tag = query.tag ?? null;
   const status = query.status ?? "all";
 
@@ -141,10 +165,11 @@ export function searchBikes(snapshot: InventorySnapshot, query: BikeQuery = {}):
     .filter((bike) => {
       if (status !== "all" && bike.status !== status) return false;
       if (tag && !bike.tags.includes(tag)) return false;
-      if (!text) return true;
+      if (tokens.length === 0) return true;
       const slot = slotById(snapshot, bike.slotId);
       const haystack = [
         bike.name,
+        bike.place,
         slot?.code ?? "",
         slot?.zone ?? "",
         bike.notes,
@@ -154,9 +179,36 @@ export function searchBikes(snapshot: InventorySnapshot, query: BikeQuery = {}):
       ]
         .join(" ")
         .toLowerCase();
-      return haystack.includes(text);
+      return tokens.every((token) => haystack.includes(token));
     })
     .sort(byName);
+}
+
+export interface PlaceGroup {
+  place: string;
+  bikes: Bike[];
+}
+
+const UNPLACED = "Not placed yet";
+
+/** Group bikes under the place text you wrote, for when you do not use codes. */
+export function bikesGroupedByPlace(
+  snapshot: InventorySnapshot,
+  query: BikeQuery = {}
+): PlaceGroup[] {
+  const groups = new Map<string, Bike[]>();
+  for (const bike of searchBikes(snapshot, query)) {
+    const key = bike.place.trim() || UNPLACED;
+    const list = groups.get(key);
+    if (list) list.push(bike);
+    else groups.set(key, [bike]);
+  }
+
+  return Array.from(groups, ([place, bikes]) => ({ place, bikes })).sort((a, b) => {
+    if (a.place === UNPLACED) return 1;
+    if (b.place === UNPLACED) return -1;
+    return a.place.localeCompare(b.place, undefined, { sensitivity: "base" });
+  });
 }
 
 export function withBike(snapshot: InventorySnapshot, bike: Bike): InventorySnapshot {

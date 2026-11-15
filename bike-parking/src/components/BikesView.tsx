@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Bike as BikeIcon, KeyRound, Plus, Search, X } from "lucide-react";
+import { Bike as BikeIcon, KeyRound, MapPin, Plus, Search } from "lucide-react";
 import { Badge, Button, Chip, EmptyState } from "./ui";
 import { PhotoThumb } from "./PhotoThumb";
-import { cn } from "@/lib/cn";
-import { allTags, keysForBike, searchBikes, slotLabelOf } from "@/lib/model";
+import { SearchField } from "./SearchField";
+import { allTags, keysForBike, searchBikes, shortPlaceOf } from "@/lib/model";
 import { BIKE_STATUSES, STATUS_LABEL, type BikeStatus, type InventorySnapshot } from "@/types";
 
 export interface BikesViewProps {
@@ -27,26 +27,14 @@ export function BikesView({ snapshot, onOpenBike, onAddBike }: BikesViewProps) {
 
   return (
     <div className="relative space-y-3 p-3 pb-24">
-      <div className="relative">
-        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="Name, place, key, tag, note…"
-          aria-label="Search bikes"
-          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm outline-none placeholder:text-slate-400 focus:border-slate-900"
-        />
-        {text ? (
-          <button
-            type="button"
-            onClick={() => setText("")}
-            aria-label="Clear search"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 active:bg-slate-100"
-          >
-            <X size={14} />
-          </button>
-        ) : null}
-      </div>
+      <SearchField value={text} onChange={setText} placeholder="Search name, tag or notes…" />
+
+      {filtered ? (
+        <p className="px-1 text-[11px] font-semibold text-slate-500">
+          {results.length} {results.length === 1 ? "bike" : "bikes"} found
+          {text.trim() ? ` for “${text.trim()}”` : ""}
+        </p>
+      ) : null}
 
       {tags.length > 0 || status !== "all" ? (
         <div className="flex gap-1.5 overflow-x-auto pb-0.5">
@@ -71,7 +59,7 @@ export function BikesView({ snapshot, onOpenBike, onAddBike }: BikesViewProps) {
           <EmptyState
             icon={<BikeIcon size={28} />}
             title="No bikes yet"
-            description="Add a bike with its name, the place it lives in, the key that fits it and a photo of each."
+            description="Add a bike with its name, where it stands in your own words, the key that fits it, and a photo of each."
             action={
               <Button onClick={onAddBike}>
                 <Plus size={16} /> Add the first bike
@@ -82,7 +70,7 @@ export function BikesView({ snapshot, onOpenBike, onAddBike }: BikesViewProps) {
           <EmptyState
             icon={<Search size={24} />}
             title="Nothing matches"
-            description="Try part of a name, a place code like B-07, a key label, or clear the filters."
+            description="Try part of the name, a tag like “kids”, or a word you wrote in the notes."
             action={
               filtered ? (
                 <Button
@@ -103,13 +91,12 @@ export function BikesView({ snapshot, onOpenBike, onAddBike }: BikesViewProps) {
         <ul className="space-y-1.5">
           {results.map((bike) => {
             const keys = keysForBike(snapshot, bike);
-            const slotLabel = slotLabelOf(snapshot, bike);
             return (
               <li key={bike.id}>
                 <button
                   type="button"
                   onClick={() => onOpenBike(bike.id)}
-                  className="flex w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2 text-left active:bg-slate-50"
+                  className="flex w-full items-start gap-2.5 rounded-xl border border-slate-200 bg-white p-2 text-left active:bg-slate-50"
                 >
                   <PhotoThumb
                     photoId={bike.bikePhotoId}
@@ -118,22 +105,27 @@ export function BikesView({ snapshot, onOpenBike, onAddBike }: BikesViewProps) {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-slate-900">{bike.name}</p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                      <Badge tone={bike.slotId ? "sky" : "amber"}>{slotLabel}</Badge>
+                    <p className="mt-0.5 flex items-start gap-1 text-[11px] leading-snug text-slate-600">
+                      <MapPin size={11} className="mt-0.5 shrink-0 text-slate-400" />
+                      <span className="line-clamp-2">{shortPlaceOf(snapshot, bike)}</span>
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
                       {bike.status !== "stored" ? (
-                        <Badge tone={bike.status === "sold" ? "slate" : "amber"}>{STATUS_LABEL[bike.status]}</Badge>
+                        <Badge tone={bike.status === "sold" ? "slate" : "amber"}>
+                          {STATUS_LABEL[bike.status]}
+                        </Badge>
                       ) : null}
+                      {bike.tags.map((value) => (
+                        <Badge key={value} tone="violet">
+                          {value}
+                        </Badge>
+                      ))}
                       {keys.length > 0 ? (
                         <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-500">
                           <KeyRound size={11} /> {keys.map((k) => k.label).join(", ")}
                         </span>
                       ) : null}
                     </div>
-                    {bike.tags.length > 0 ? (
-                      <p className={cn("mt-0.5 truncate text-[11px] text-violet-600")}>
-                        {bike.tags.map((t) => `#${t}`).join(" ")}
-                      </p>
-                    ) : null}
                   </div>
                 </button>
               </li>

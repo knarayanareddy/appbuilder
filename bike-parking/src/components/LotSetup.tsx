@@ -14,9 +14,9 @@ export interface LotSetupProps {
 }
 
 /**
- * Deciding the place codes is the highest-leverage five minutes in this app:
- * every bike record points at one of these codes, and they only help if they
- * match what is painted on the racks.
+ * Numbered places are optional by design. A bike's place is free text, so a lot
+ * with nothing painted on it can be recorded perfectly well — this screen only
+ * exists for people who *do* have numbered racks and want a grid.
  */
 export function LotSetup({ snapshot, firstRun, saving, onSave, onClose }: LotSetupProps) {
   const initial = snapshot.settings.zones.length > 0 ? snapshot.settings.zones : DEFAULT_ZONES;
@@ -41,16 +41,16 @@ export function LotSetup({ snapshot, firstRun, saving, onSave, onClose }: LotSet
 
   const canSave = zones.length > 0 && errors.length === 0 && !saving;
 
-  const form = (
+  const layoutForm = (
     <div className="space-y-3">
       <Field
         label="Zones and places"
-        hint='One entry per row: A=25 means row A with 25 places, numbered A-01 to A-25.'
+        hint="One entry per row: A=25 means row A with 25 places, numbered A-01 to A-25."
       >
         <TextArea
           value={text}
           onChange={(event) => setText(event.target.value)}
-          rows={3}
+          rows={2}
           spellCheck={false}
           aria-label="Zones and places"
         />
@@ -73,17 +73,16 @@ export function LotSetup({ snapshot, firstRun, saving, onSave, onClose }: LotSet
             </span>
           ))}
         </Notice>
-      ) : (
-        <Notice tone={orphanCount > 0 ? "amber" : "slate"}>
-          {orphanCount > 0
-            ? `${orphanCount} bike${orphanCount === 1 ? "" : "s"} sit in a place that would disappear and would become unassigned. Nothing is deleted.`
-            : "Existing bikes keep their place as long as the code still exists."}
+      ) : orphanCount > 0 ? (
+        <Notice tone="amber">
+          {orphanCount} bike{orphanCount === 1 ? "" : "s"} sit in a place that would disappear and would become
+          unassigned. Their written description is kept either way.
         </Notice>
-      )}
+      ) : null}
 
       <p className="text-[11px] leading-relaxed text-slate-500">
-        Write these codes on the racks if they are not already labelled. A code you can read on the frame is worth more
-        than any search field.
+        Only useful if the lot already has numbers painted on it. Every bike also keeps a free-text description, so
+        nothing is lost if a number goes away.
       </p>
     </div>
   );
@@ -95,23 +94,42 @@ export function LotSetup({ snapshot, firstRun, saving, onSave, onClose }: LotSet
           <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500">
             <Warehouse size={20} />
           </div>
-          <h1 className="text-xl font-black">Set up your lot</h1>
+          <h1 className="text-xl font-black">How do you want to record places?</h1>
           <p className="text-xs leading-relaxed text-slate-300">
-            How many places do you have, and what are the rows called? This becomes the grid you will see on the main
-            screen. You can change it later in Settings.
+            Either write where each bike is in your own words — no setup at all — or give every spot a number and see
+            the lot as a grid. Both work offline, and you can change this later.
           </p>
         </div>
+
         <div className="flex-1 space-y-3 p-4">
-          {form}
-          <Button
-            className="w-full"
-            disabled={!canSave}
-            onClick={async () => {
-              await onSave(zones);
-            }}
-          >
-            <Check size={16} /> Create {total} places
-          </Button>
+          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-emerald-700">
+              Option 1 · describe places in words
+            </p>
+            <p className="mb-2.5 text-[11px] leading-relaxed text-slate-600">
+              Recommended if nothing is painted on your racks. Each bike gets a free-text place you can make as long
+              as you like: “behind the blue container, third rack from the wall, top hook”.
+            </p>
+            <Button className="w-full" onClick={() => void onSave([])} disabled={saving}>
+              Skip numbering — describe them instead
+            </Button>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-sky-700">
+              Option 2 · numbered places (grid view)
+            </p>
+            {layoutForm}
+            <Button
+              variant="secondary"
+              className="mt-2.5 w-full"
+              disabled={!canSave}
+              onClick={() => void onSave(zones)}
+            >
+              <Check size={16} /> Create {total} places
+            </Button>
+          </div>
+
           <p className="pb-6 text-center text-[11px] text-slate-500">
             Everything you enter stays on this phone.
           </p>
@@ -124,27 +142,41 @@ export function LotSetup({ snapshot, firstRun, saving, onSave, onClose }: LotSet
     <Sheet
       open
       onClose={() => onClose?.()}
-      title="Lot layout"
-      subtitle="Changes apply straight away"
+      title="Numbered places"
+      subtitle="Optional — written descriptions always work"
       footer={
-        <div className="flex gap-2">
-          <Button variant="secondary" className="flex-1" onClick={() => onClose?.()}>
-            Cancel
-          </Button>
-          <Button
-            className="flex-[2]"
-            disabled={!canSave}
-            onClick={async () => {
-              await onSave(zones);
-              onClose?.();
-            }}
-          >
-            <Check size={16} /> Save layout
-          </Button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button variant="secondary" className="flex-1" onClick={() => onClose?.()}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-[2]"
+              disabled={!canSave}
+              onClick={async () => {
+                await onSave(zones);
+                onClose?.();
+              }}
+            >
+              <Check size={16} /> Save layout
+            </Button>
+          </div>
+          {snapshot.slots.length > 0 ? (
+            <Button
+              variant="ghost"
+              className="w-full text-[11px]"
+              onClick={async () => {
+                await onSave([]);
+                onClose?.();
+              }}
+            >
+              Remove all numbered places (keep written descriptions)
+            </Button>
+          ) : null}
         </div>
       }
     >
-      <div className="pb-2">{form}</div>
+      <div className="pb-2">{layoutForm}</div>
     </Sheet>
   );
 }

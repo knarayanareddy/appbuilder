@@ -13,10 +13,11 @@ beforeEach(() => {
 });
 
 describe("App — first run", () => {
-  it("asks for the lot layout before anything else", async () => {
+  it("offers numbered places or plain words, and defaults to numbered", async () => {
     render(<App />);
-    expect(await screen.findByText(/Set up your lot/i)).toBeInTheDocument();
+    expect(await screen.findByText(/How do you want to record places/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Create 100 places/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Skip numbering/i })).toBeEnabled();
   });
 
   it("creates the places and stores them on the device", async () => {
@@ -131,5 +132,91 @@ describe("App — bike details", () => {
       expect(stored.bikes[0].status).toBe("out");
       expect(stored.bikes[0].slotId).not.toBeNull();
     });
+  });
+});
+
+describe("App — places in your own words", () => {
+  async function skipNumbering() {
+    const user = userEvent.setup();
+    const view = render(<App />);
+    await user.click(await screen.findByRole("button", { name: /Skip numbering/i }));
+    await screen.findByText(/No bikes yet/i);
+    return { user, view };
+  }
+
+  async function addBike(
+    user: ReturnType<typeof userEvent.setup>,
+    fields: { name: string; place?: string; notes?: string }
+  ) {
+    await user.click(screen.getByRole("button", { name: /Add the first bike|Add bike/i }));
+    await user.type(screen.getByLabelText(/Bike name/i), fields.name);
+    if (fields.place) {
+      await user.type(screen.getByLabelText(/Where is it/i), fields.place);
+    }
+    if (fields.notes) {
+      await user.type(screen.getByLabelText(/Notes/i), fields.notes);
+    }
+    await user.click(screen.getByRole("button", { name: /Save bike/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  }
+
+  it("never asks for a numbered layout", async () => {
+    await skipNumbering();
+
+    const stored = await loadSnapshot();
+    expect(stored.slots).toHaveLength(0);
+    expect(stored.settings.lotConfiguredAt).toBeGreaterThan(0);
+  });
+
+  it("records a long written place and shows it back verbatim", async () => {
+    const { user } = await skipNumbering();
+
+    const place = "Back left corner, behind the blue container — third rack from the wall, top hook.";
+    await addBike(user, { name: "Blue Gazelle", place });
+
+    expect(await screen.findByText(place)).toBeInTheDocument();
+
+    const stored = await loadSnapshot();
+    expect(stored.bikes[0].place).toBe(place);
+    expect(stored.bikes[0].slotId).toBeNull();
+  });
+
+  it("finds a bike by name, by tag and by a word in the notes", async () => {
+    const { user } = await skipNumbering();
+
+    await addBike(user, {
+      name: "Cargo bike",
+      place: "By the door",
+      notes: "front brake squeals badly",
+    });
+    await addBike(user, { name: "Kids BMX", place: "Under the stairs", notes: "flat rear tyre" });
+
+    await user.click(screen.getByRole("button", { name: /Bikes/i }));
+
+    const search = screen.getByLabelText(/Search bikes/i);
+
+    await user.type(search, "cargo");
+    expect(screen.getByRole("button", { name: /Cargo bike/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Kids BMX/ })).not.toBeInTheDocument();
+
+    await user.clear(search);
+    await user.type(search, "squeals");
+    expect(screen.getByRole("button", { name: /Cargo bike/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Kids BMX/ })).not.toBeInTheDocument();
+
+    await user.clear(search);
+    await user.type(search, "flat tyre");
+    expect(screen.getByRole("button", { name: /Kids BMX/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Cargo bike/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps everything after a reload, with no numbered places involved", async () => {
+    const { user, view } = await skipNumbering();
+    await addBike(user, { name: "Town bike", place: "Left wall, hook 4" });
+    view.unmount();
+
+    render(<App />);
+    expect(await screen.findByText(/1 bike · all on this phone/i)).toBeInTheDocument();
+    expect(screen.getByText("Left wall, hook 4")).toBeInTheDocument();
   });
 });
