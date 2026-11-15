@@ -1,4 +1,4 @@
-import { makeBike, makeKey } from "@/lib/model";
+import { makeBike, makeItem, makeKey } from "@/lib/model";
 import { buildSlots } from "@/lib/slots";
 import type { InventorySnapshot } from "@/types";
 
@@ -23,6 +23,7 @@ export function testSnapshot(): InventorySnapshot {
 
   return {
     bikes: [gazelle, bmx],
+    items: [],
     keys: [blueKey, redKey],
     slots,
     settings: { id: "app", zones: [{ code: "A", count: 3 }], lotConfiguredAt: 1, lastBackupAt: null },
@@ -45,8 +46,32 @@ export function wordsSnapshot(): InventorySnapshot {
 
   return {
     bikes: [gazelle, bmx, cargo],
+    items: [],
     keys: [blueKey],
     slots: [],
     settings: { id: "app", zones: [], lotConfiguredAt: 1, lastBackupAt: null },
+  };
+}
+
+/** A few non-bike things stored in the same shed. */
+export function itemsSnapshot(): InventorySnapshot {
+  const base = wordsSnapshot();
+  return {
+    ...base,
+    items: [
+      makeItem({
+        name: "MacBook Pro 14",
+        place: "Top shelf of the metal cupboard, in the grey sleeve",
+        tags: ["laptop", "work"],
+        notes: "charger lives in the side pocket, not with the laptop",
+      }),
+      makeItem({
+        name: "Spray paint can (black)",
+        place: "Under the bench, in the crate with the tools",
+        tags: ["paint"],
+        notes: "",
+      }),
+      makeItem({ name: "Headphones", place: "", tags: ["audio"] }),
+    ],
   };
 }

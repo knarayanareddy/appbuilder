@@ -8,14 +8,37 @@ real APK, and it never touches the network.
 like — with no schema, no codes and no setup. Numbered places (`A-01 …`) are an optional
 extra for lots that already have numbers painted on the racks.
 
+**Two kinds of things live in it.** Bikes (with a written place, two photos, keys, tags and
+notes) and **Items** — laptops, MacBooks, chargers, bike tyres, spray paint cans, headphones,
+anything at all. Items are deliberately simpler: name, where it is stored, tags, notes.
+
 **Why it exists:** 40–60 bikes, 100 places, and no memory of where any individual bike
 stands. The app answers three questions: *where is this bike* (written description + photo),
 *what does this key open* (keys are records), and *what do I have that is tagged/noted like
 this* (search across name, tags and notes).
 
+## Bikes vs Items
+
+| | Bikes | Items |
+|---|---|---|
+| Sections | Lot, Bikes, Keys | Items |
+| Required | name | name |
+| Location | free text + optional numbered place | free text |
+| Photos | bike + place | — |
+| Keys | yes (many-to-many) | — |
+| Tags | yes | yes |
+| Notes | yes | yes |
+| Status | in lot / out / service / sold | — |
+
+Items exist because most of what goes missing is not a bike: “where is the 96 W charger”,
+“which crate are the tyres in”, “did I leave the spray can under the bench”. Same free-text
+place philosophy, same search, one more tab. They are stored in their own table, so the bike
+side is completely unaffected.
+
 ## Finding a bike
 
-There is a search field at the top of both the **Lot** and **Bikes** screens. It matches:
+There is a search field at the top of the **Lot**, **Bikes** and **Items** screens. For
+bikes it matches:
 
 - the bike **name**
 - any **tag** you attached (`kids`, `road`, `on loan to Ana`)
@@ -24,8 +47,9 @@ There is a search field at the top of both the **Lot** and **Bikes** screens. It
 - a **key label** or where the key is kept
 
 Every word you type must appear somewhere on the bike, in any order — so `flat tyre` finds a
-note that reads *"flat rear tyre, needs a new tube"*. Nothing is sent anywhere; the search
-runs over the records on the phone.
+note that reads *"flat rear tyre, needs a new tube"*. Item search is the same, over **item
+name, place, tags and notes**. Nothing is sent anywhere; the search runs over the records on
+the phone.
 
 This folder is self-contained: its own `package.json`, its own build, its own tests. It
 imports nothing from the root ProCam app, and the root app imports nothing from here.
@@ -46,6 +70,7 @@ Consequences, stated plainly:
 |---|---|
 | Does it need internet? | No. The app bundle ships inside the APK; there is no fetch anywhere in the code. |
 | Is it saved between launches? | Yes — IndexedDB persists until the app is uninstalled or its storage is cleared in Android settings. |
+| Do I lose bikes if this version adds items? | No. The database upgrade only creates the new store; existing records are untouched (there is a test for exactly this). |
 | Can Chrome's "clear browsing data" wipe it? | **No.** It is not Chrome's storage; it is the app's own sandbox. |
 | Does it survive losing the phone? | Only if you made a backup file. |
 
@@ -110,7 +135,8 @@ src/
   types.ts                  Bike / Slot / Key / Photo shapes
   lib/
     idb.ts                  Promise wrapper over IndexedDB (5 object stores)
-    repo.ts                 The only module that persists anything
+    repo.ts                 The only module that persists anything (bikes, items, keys,
+                            slots, photos, settings)
     model.ts                Pure logic: occupancy, free places, search, cascades
     slots.ts                Lot layout parsing and place-code generation
     backup.ts              Export/import: bytes ↔ base64, validation, repair
@@ -119,7 +145,8 @@ src/
     format.ts, cn.ts, id.ts Small helpers (duplicated from the root app on purpose)
   hooks/useInventory.ts     All mutations: persist first, then update state
   components/               LotView, BikesView, BikeForm, BikeDetail, KeysView,
-                            SettingsView, LotSetup, PhotoPicker, PhotoThumb, TagInput…
+                            ItemsView, ItemForm, SearchField, SettingsView, LotSetup,
+                            PhotoPicker, PhotoThumb, TagInput…
 ```
 
 ### The model
@@ -127,6 +154,7 @@ src/
 ```
 Bike   name · place (free text, any length) · slotId → Slot | null (optional) ·
        keyIds → Key[] · tags[] · status · notes · bikePhotoId · slotPhotoId
+Item   name · place (free text, any length) · tags[] · notes
 Slot   code ("B-07") · zone · index · note        ← only if you opt into numbering
 Key    label ("Blue Abus #12") · keptAt ("hook 3, left wall") · note
 ```
@@ -163,14 +191,14 @@ varies between storage engines).
 
 ### Tests
 
-107 tests across the pure model, the storage layer, backup round-trips, and the UI
+133 tests across the pure model, the storage layer, backup round-trips, and the UI
 (onboarding → add bike → search → reopen). `fake-indexeddb` stands in for the device
 database. Notable cases covered: a long written place is stored verbatim, search finds a
 bike by name, tag, note or place description, multi-word search matches in any order, the
 words-only mode never asks for a layout, a sold bike frees its numbered place, a deleted key
 detaches from every bike, a layout change that removes places reports the affected bikes, a
-corrupt photo in a backup does not sink the restore, and a reload reads everything back
-from disk.
+corrupt photo in a backup does not sink the restore, a reload reads everything back from
+disk, and a version-1 database upgrades to the items store without losing a single bike.
 
 Not covered by tests: real camera capture and real canvas downscaling (both need a browser),
 and the Capacitor filesystem/share calls (they need a device).
@@ -182,6 +210,9 @@ and the Capacitor filesystem/share calls (they need a device).
 - **No sync, no accounts, no cloud.** By design — that is what "works offline" costs you.
   Moving to a new phone means backing up, then restoring on the new one.
 - **Restore replaces everything.** Merge-on-restore would be a future nicety.
+- **Items have no photos and no status.** The bike side is where the visual records are;
+  items are name/place/tags/notes by design. Adding a photo per item is a small change if it
+  turns out to matter.
 - **The data is not encrypted.** Anyone with the unlocked phone can read it. Fine for
   frames in a shed; revisit if you ever store serial numbers and purchase prices.
 - **If you do use numbered places, the codes are only as good as the physical labels.**

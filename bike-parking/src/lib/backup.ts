@@ -1,9 +1,9 @@
 import { fileStamp } from "./format";
 import { DEFAULT_SETTINGS } from "@/types";
-import type { Bike, BikeStatus, InventorySnapshot, LotKey, PhotoRecord, Settings, Slot } from "@/types";
+import type { Bike, BikeStatus, InventorySnapshot, Item, LotKey, PhotoRecord, Settings, Slot } from "@/types";
 
 export const BACKUP_KIND = "bike-lot-tracker-backup";
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
 export interface BackupPhoto {
   id: string;
@@ -20,6 +20,8 @@ export interface BackupFile {
   slots: Slot[];
   keys: LotKey[];
   bikes: Bike[];
+  /** Added in version 2. Version 1 backups simply have none. */
+  items: Item[];
   photos: BackupPhoto[];
 }
 
@@ -87,6 +89,7 @@ export async function encodeBackup(
     slots: snapshot.slots,
     keys: snapshot.keys,
     bikes: snapshot.bikes,
+    items: snapshot.items,
     photos: encoded,
   };
 }
@@ -177,6 +180,19 @@ export function decodeBackup(raw: unknown): DecodedBackup {
       };
     });
 
+  const items: Item[] = (Array.isArray(raw.items) ? raw.items : [])
+    .filter(isRecord)
+    .filter((i) => asString(i.id) && asString(i.name).trim().length > 0)
+    .map((i) => ({
+      id: asString(i.id),
+      name: asString(i.name).trim(),
+      place: asString(i.place),
+      tags: asStringArray(i.tags).map((t) => t.trim()).filter(Boolean),
+      notes: asString(i.notes),
+      createdAt: asNumber(i.createdAt, now),
+      updatedAt: asNumber(i.updatedAt, now),
+    }));
+
   const photos: PhotoRecord[] = [];
   for (const entry of Array.isArray(raw.photos) ? raw.photos : []) {
     if (!isRecord(entry)) continue;
@@ -216,7 +232,7 @@ export function decodeBackup(raw: unknown): DecodedBackup {
     if (bike.slotPhotoId && !photoIds.has(bike.slotPhotoId)) bike.slotPhotoId = null;
   }
 
-  return { snapshot: { bikes, keys, slots, settings }, photos };
+  return { snapshot: { bikes, items, keys, slots, settings }, photos };
 }
 
 export function parseBackupText(text: string): DecodedBackup {

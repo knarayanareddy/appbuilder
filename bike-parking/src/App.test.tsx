@@ -85,7 +85,7 @@ describe("App — recording bikes", () => {
 
     // Fresh mount: no onboarding, data straight from the local database.
     render(<App />);
-    expect(await screen.findByText(/1 bike · all on this phone/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 bike · 0 items · on this phone/i)).toBeInTheDocument();
     expect(screen.queryByText(/Set up your lot/i)).not.toBeInTheDocument();
     expect(screen.getByText("0 of 2 places taken")).toBeInTheDocument();
   });
@@ -216,7 +216,94 @@ describe("App — places in your own words", () => {
     view.unmount();
 
     render(<App />);
-    expect(await screen.findByText(/1 bike · all on this phone/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 bike · 0 items · on this phone/i)).toBeInTheDocument();
     expect(screen.getByText("Left wall, hook 4")).toBeInTheDocument();
+  });
+});
+
+describe("App — other items", () => {
+  async function startOnItems() {
+    const user = userEvent.setup();
+    const view = render(<App />);
+    await user.click(await screen.findByRole("button", { name: /Skip numbering/i }));
+    await user.click(await screen.findByRole("button", { name: "Items" }));
+    await screen.findByText(/Nothing but bikes yet/i);
+    return { user, view };
+  }
+
+  async function addItem(
+    user: ReturnType<typeof userEvent.setup>,
+    fields: { name: string; place?: string; tag?: string; notes?: string }
+  ) {
+    await user.click(screen.getByRole("button", { name: /Add the first item|Add item/i }));
+    await user.type(screen.getByLabelText(/Item name/i), fields.name);
+    if (fields.place) await user.type(screen.getByLabelText(/Where is it/i), fields.place);
+    if (fields.tag) await user.type(screen.getByLabelText(/Add a tag/i), `${fields.tag}{Enter}`);
+    if (fields.notes) await user.type(screen.getByLabelText(/Notes/i), fields.notes);
+    await user.click(screen.getByRole("button", { name: /Save item/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  }
+
+  it("records a laptop with a place, a tag and notes", async () => {
+    const { user } = await startOnItems();
+
+    await addItem(user, {
+      name: "MacBook Pro 14",
+      place: "Top shelf of the metal cupboard, grey sleeve",
+      tag: "laptop",
+      notes: "charger lives in the side pocket",
+    });
+
+    expect(screen.getByText("MacBook Pro 14")).toBeInTheDocument();
+    expect(screen.getByText(/Top shelf of the metal cupboard/)).toBeInTheDocument();
+
+    const stored = await loadSnapshot();
+    expect(stored.items).toHaveLength(1);
+    expect(stored.items[0]).toMatchObject({
+      name: "MacBook Pro 14",
+      place: "Top shelf of the metal cupboard, grey sleeve",
+      tags: ["laptop"],
+      notes: "charger lives in the side pocket",
+    });
+  });
+
+  it("finds an item by a word from the notes, and by a tag", async () => {
+    const { user } = await startOnItems();
+
+    await addItem(user, { name: "MacBook Pro 14", notes: "charger is in the side pocket", tag: "laptop" });
+    await addItem(user, { name: "Spray paint can", tag: "paint" });
+
+    const search = screen.getByLabelText(/Search items/i);
+
+    await user.type(search, "pocket");
+    expect(screen.getByText("MacBook Pro 14")).toBeInTheDocument();
+    expect(screen.queryByText("Spray paint can")).not.toBeInTheDocument();
+
+    await user.clear(search);
+    await user.click(screen.getByRole("button", { name: "#paint" }));
+    expect(screen.getByText("Spray paint can")).toBeInTheDocument();
+    expect(screen.queryByText("MacBook Pro 14")).not.toBeInTheDocument();
+  });
+
+  it("keeps items and bikes in separate lists", async () => {
+    const { user } = await startOnItems();
+    await addItem(user, { name: "Headphones", place: "Desk drawer" });
+
+    await user.click(screen.getByRole("button", { name: "Bikes" }));
+    expect(screen.queryByText("Headphones")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Items" }));
+    expect(screen.getByText("Headphones")).toBeInTheDocument();
+  });
+
+  it("still has the items after a reload", async () => {
+    const { user, view } = await startOnItems();
+    await addItem(user, { name: "Headphones", place: "Desk drawer, left" });
+    view.unmount();
+
+    render(<App />);
+    expect(await screen.findByText(/0 bikes · 1 item · on this phone/i)).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Items" }));
+    expect(await screen.findByText("Headphones")).toBeInTheDocument();
   });
 });

@@ -218,6 +218,27 @@ your schema, and I can be verbose about it."* Correct call, and it changes the d
 - **Search was made explicit and wider**: name, tags, notes, place description, key label —
   every word of the query must appear in any order, so "flat tyre" matches "flat rear tyre".
 
+## 10. Revision — a second, simpler entity for everything else
+
+Follow-up: *"options to add other items ranging from laptops, macbooks, chargers, bike tyres,
+spray paint can, headphones and anything… name of the item, place stored, tags and additional
+notes… additional section in the same app."*
+
+Kept it small and separate rather than bolting more fields onto `Bike`:
+
+- **`Item` is its own record and its own table** (`name`, `place`, `tags[]`, `notes`), with
+  one new tab. Bikes and items never appear in each other's lists or search results — a
+  deliberate line, because the bike side carries keys, photos and status that would be noise
+  on a charger.
+- **Same free-text place philosophy.** The place is not validated, not shortened, not split
+  into fields.
+- **The database went to version 2.** The upgrade path only creates the missing object store,
+  so an existing inventory is carried over untouched; there is a test that builds a genuine
+  version-1 database and asserts the bikes survive.
+- **Backups went to version 2** and still read version-1 files (which simply have no items).
+- **Skipped for now:** photos and status on items. Add photos if hunting for a specific
+  charger photo becomes a real need — the photo machinery already exists for bikes.
+
 ### Deliberately not built
 
 Cloud sync, accounts, sharing, notifications, and encryption. Each one either contradicts

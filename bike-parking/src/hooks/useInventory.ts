@@ -6,16 +6,19 @@ import {
   applyZones,
   emptySnapshot,
   makeBike,
+  makeItem,
   makeKey,
   withBike,
+  withItem,
   withKey,
   withSettings,
   withoutBike,
+  withoutItem,
   withoutKey,
 } from "@/lib/model";
 import { requestPersistentStorage, saveBackupFile } from "@/lib/native";
 import * as repo from "@/lib/repo";
-import type { Bike, BikeStatus, ID, InventorySnapshot, LotKey, ZoneSpec } from "@/types";
+import type { Bike, BikeStatus, ID, InventorySnapshot, Item, LotKey, ZoneSpec } from "@/types";
 
 export interface BikeDraft {
   id?: ID;
@@ -32,6 +35,14 @@ export interface BikeDraft {
   slotPhoto?: Blob | null;
   clearBikePhoto?: boolean;
   clearSlotPhoto?: boolean;
+}
+
+export interface ItemDraft {
+  id?: ID;
+  name: string;
+  place: string;
+  tags: string[];
+  notes: string;
 }
 
 export interface KeyDraft {
@@ -215,6 +226,34 @@ export function useInventory() {
     [run]
   );
 
+  const saveItem = useCallback(
+    (draft: ItemDraft) =>
+      run(async () => {
+        const existing = draft.id ? snapshotRef.current.items.find((i) => i.id === draft.id) : undefined;
+        const item: Item = {
+          ...(existing ?? makeItem()),
+          name: draft.name.trim(),
+          place: draft.place.trim(),
+          tags: normalizeTags(draft.tags),
+          notes: draft.notes.trim(),
+          updatedAt: Date.now(),
+        };
+        await repo.saveItemRecord(item);
+        setSnapshot((prev) => withItem(prev, item));
+        return item;
+      }),
+    [run]
+  );
+
+  const deleteItem = useCallback(
+    (itemId: ID) =>
+      run(async () => {
+        await repo.removeItemRecord(itemId);
+        setSnapshot((prev) => withoutItem(prev, itemId));
+      }),
+    [run]
+  );
+
   const saveKey = useCallback(
     (draft: KeyDraft) =>
       run(async () => {
@@ -323,6 +362,8 @@ export function useInventory() {
     deleteBike,
     setStatus,
     assignSlot,
+    saveItem,
+    deleteItem,
     saveKey,
     deleteKey,
     setKeyOnBike,

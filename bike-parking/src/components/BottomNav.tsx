@@ -1,4 +1,4 @@
-import { Bike, Grid3x3, KeyRound, Settings } from "lucide-react";
+import { Bike, Grid3x3, KeyRound, Package, Settings } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { Tab } from "@/types";
 
@@ -6,13 +6,14 @@ const ITEMS: { id: Tab; label: string; Icon: typeof Bike }[] = [
   { id: "lot", label: "Lot", Icon: Grid3x3 },
   { id: "bikes", label: "Bikes", Icon: Bike },
   { id: "keys", label: "Keys", Icon: KeyRound },
+  { id: "items", label: "Items", Icon: Package },
   { id: "settings", label: "Settings", Icon: Settings },
 ];
 
 export function BottomNav({ tab, onChange }: { tab: Tab; onChange: (tab: Tab) => void }) {
   return (
     <nav className="safe-bottom sticky bottom-0 border-t border-slate-200 bg-white/95 pt-1 backdrop-blur">
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {ITEMS.map(({ id, label, Icon }) => {
           const active = tab === id;
           return (

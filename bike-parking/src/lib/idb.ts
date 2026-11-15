@@ -6,13 +6,16 @@
  * it up and force ~33 % base64 bloat. IndexedDB stores real Blobs and gets a quota
  * measured against free disk space.
  *
+ * Version 2 adds the "items" store. Upgrades only ever create missing stores,
+ * so an existing inventory (bikes, photos, keys) is carried over untouched.
+ *
  * Inside the Android WebView this data lives in the app's private storage
  * (`/data/data/com.bikelot.tracker/app_webview`), which is untouched by Chrome's
  * "clear browsing data" and only goes away if the app is uninstalled or its
  * storage is cleared from Android settings — which is what the backup file is for.
  */
 
-export const STORES = ["bikes", "keys", "slots", "photos", "settings"] as const;
+export const STORES = ["bikes", "items", "keys", "slots", "photos", "settings"] as const;
 export type StoreName = (typeof STORES)[number];
 
 interface DbConfig {
@@ -20,7 +23,7 @@ interface DbConfig {
   version: number;
 }
 
-let config: DbConfig = { name: "bike-lot", version: 1 };
+let config: DbConfig = { name: "bike-lot", version: 2 };
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 /** Test hook: point the layer at a throwaway database. */

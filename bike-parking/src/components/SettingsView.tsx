@@ -150,6 +150,12 @@ export function SettingsView({ snapshot, onEditLayout, onBackup, onRestore, phot
         </h2>
         <dl className="space-y-1 text-[11px] text-slate-600">
           <div className="flex justify-between">
+            <dt>Bikes / items stored</dt>
+            <dd className="font-semibold text-slate-800">
+              {snapshot.bikes.length} / {snapshot.items.length}
+            </dd>
+          </div>
+          <div className="flex justify-between">
             <dt>Photos stored</dt>
             <dd className="font-semibold text-slate-800">{photoCount === null ? "…" : photoCount}</dd>
           </div>

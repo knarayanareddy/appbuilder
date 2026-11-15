@@ -5,6 +5,7 @@ import type {
   Bike,
   BikeStatus,
   InventorySnapshot,
+  Item,
   LotKey,
   Settings,
   Slot,
@@ -12,7 +13,7 @@ import type {
 } from "@/types";
 
 export function emptySnapshot(): InventorySnapshot {
-  return { bikes: [], keys: [], slots: [], settings: { ...DEFAULT_SETTINGS } };
+  return { bikes: [], items: [], keys: [], slots: [], settings: { ...DEFAULT_SETTINGS } };
 }
 
 export function makeBike(partial: Partial<Bike> = {}): Bike {
@@ -43,8 +44,34 @@ export function makeKey(partial: Partial<LotKey> = {}): LotKey {
   };
 }
 
-export function byName(a: Bike, b: Bike): number {
+export function makeItem(partial: Partial<Item> = {}): Item {
+  const now = Date.now();
+  return {
+    id: partial.id ?? newId(),
+    name: partial.name?.trim() ?? "",
+    place: partial.place?.trim() ?? "",
+    tags: partial.tags ?? [],
+    notes: partial.notes ?? "",
+    createdAt: partial.createdAt ?? now,
+    updatedAt: partial.updatedAt ?? now,
+  };
+}
+
+export function byName(a: Bike | Item, b: Bike | Item): number {
   return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+}
+
+/* ------------------------------------------------------------------ */
+/* Search                                                             */
+/* ------------------------------------------------------------------ */
+
+function tokensOf(text: string): string[] {
+  return text.trim().toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+/** Every word must appear somewhere, in any order. */
+function matchesAll(haystack: string, tokens: string[]): boolean {
+  return tokens.length === 0 || tokens.every((token) => haystack.includes(token));
 }
 
 /** Sold bikes keep their last slot as history but stop occupying a place. */
@@ -108,6 +135,51 @@ export function bikesForKey(snapshot: InventorySnapshot, keyId: string): Bike[] 
  * The place as it should be shown: your own words first, then the optional
  * numbered place, then an honest "not placed yet".
  */
+/* ------------------------------------------------------------------ */
+/* Items                                                              */
+/* ------------------------------------------------------------------ */
+
+export function itemPlaceLabelOf(item: Item): string {
+  return item.place.trim() || "Place not recorded";
+}
+
+export interface ItemQuery {
+  text?: string;
+  tag?: string | null;
+}
+
+/** Search items by name, place, tags or notes. */
+export function searchItems(snapshot: InventorySnapshot, query: ItemQuery = {}): Item[] {
+  const tokens = tokensOf(query.text ?? "");
+  const tag = query.tag ?? null;
+
+  return snapshot.items
+    .filter((item) => {
+      if (tag && !item.tags.includes(tag)) return false;
+      const haystack = [item.name, item.place, item.notes, ...item.tags].join(" ").toLowerCase();
+      return matchesAll(haystack, tokens);
+    })
+    .sort(byName);
+}
+
+export function allItemTags(snapshot: InventorySnapshot): string[] {
+  const set = new Set<string>();
+  for (const item of snapshot.items) for (const tag of item.tags) set.add(tag);
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+export function withItem(snapshot: InventorySnapshot, item: Item): InventorySnapshot {
+  const exists = snapshot.items.some((i) => i.id === item.id);
+  return {
+    ...snapshot,
+    items: exists ? snapshot.items.map((i) => (i.id === item.id ? item : i)) : [...snapshot.items, item],
+  };
+}
+
+export function withoutItem(snapshot: InventorySnapshot, itemId: string): InventorySnapshot {
+  return { ...snapshot, items: snapshot.items.filter((i) => i.id !== itemId) };
+}
+
 export function placeLabelOf(snapshot: InventorySnapshot, bike: Bike): string {
   const written = bike.place.trim();
   if (written) return written;
@@ -154,10 +226,9 @@ export interface BikeQuery {
  * key label, a tag, or a line you wrote in the notes.
  */
 export function searchBikes(snapshot: InventorySnapshot, query: BikeQuery = {}): Bike[] {
-  const text = (query.text ?? "").trim().toLowerCase();
   // Every word must appear, in any order: searching "flat tyre" finds a note
   // that says "flat rear tyre", which is how people actually remember things.
-  const tokens = text.split(/\s+/).filter(Boolean);
+  const tokens = tokensOf(query.text ?? "");
   const tag = query.tag ?? null;
   const status = query.status ?? "all";
 
@@ -179,7 +250,7 @@ export function searchBikes(snapshot: InventorySnapshot, query: BikeQuery = {}):
       ]
         .join(" ")
         .toLowerCase();
-      return tokens.every((token) => haystack.includes(token));
+      return matchesAll(haystack, tokens);
     })
     .sort(byName);
 }

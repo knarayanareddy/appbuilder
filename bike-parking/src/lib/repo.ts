@@ -1,6 +1,6 @@
 import { clearAll, db } from "./idb";
 import { DEFAULT_SETTINGS } from "@/types";
-import type { Bike, InventorySnapshot, LotKey, PhotoRecord, Settings, Slot } from "@/types";
+import type { Bike, InventorySnapshot, Item, LotKey, PhotoRecord, Settings, Slot } from "@/types";
 
 /**
  * The single place that knows how records are persisted. Everything above this
@@ -9,8 +9,9 @@ import type { Bike, InventorySnapshot, LotKey, PhotoRecord, Settings, Slot } fro
  */
 
 export async function loadSnapshot(): Promise<InventorySnapshot> {
-  const [bikes, keys, slots, settingsRows] = await Promise.all([
+  const [bikes, items, keys, slots, settingsRows] = await Promise.all([
     db.all<Bike>("bikes"),
+    db.all<Item>("items"),
     db.all<LotKey>("keys"),
     db.all<Slot>("slots"),
     db.all<Settings>("settings"),
@@ -19,6 +20,7 @@ export async function loadSnapshot(): Promise<InventorySnapshot> {
   return {
     // Records written before free-text places existed get an empty place.
     bikes: bikes.map((bike) => ({ ...bike, place: bike.place ?? "" })),
+    items: items.map((item) => ({ ...item, place: item.place ?? "" })),
     keys,
     slots: slots.sort((a, b) => (a.zone === b.zone ? a.index - b.index : a.zone.localeCompare(b.zone))),
     settings: settingsRows[0] ?? { ...DEFAULT_SETTINGS },
@@ -31,6 +33,14 @@ export async function saveBikeRecord(bike: Bike): Promise<void> {
 
 export async function removeBikeRecord(bikeId: string): Promise<void> {
   await db.remove("bikes", bikeId);
+}
+
+export async function saveItemRecord(item: Item): Promise<void> {
+  await db.put("items", item);
+}
+
+export async function removeItemRecord(itemId: string): Promise<void> {
+  await db.remove("items", itemId);
 }
 
 export async function saveKeyRecord(key: LotKey): Promise<void> {
@@ -89,6 +99,7 @@ export async function replaceEverything(
   await clearAll();
   await Promise.all([
     ...snapshot.bikes.map((bike) => db.put("bikes", bike)),
+    ...snapshot.items.map((item) => db.put("items", item)),
     ...snapshot.keys.map((key) => db.put("keys", key)),
     ...snapshot.slots.map((slot) => db.put("slots", slot)),
     ...photos.map((photo) => db.put("photos", photo)),

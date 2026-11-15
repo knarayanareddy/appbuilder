@@ -5,11 +5,13 @@ export function SearchField({
   value,
   onChange,
   placeholder = "Search name, tag or notes…",
+  ariaLabel = "Search bikes",
   className,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  ariaLabel?: string;
   className?: string;
 }) {
   return (
@@ -20,7 +22,7 @@ export function SearchField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        aria-label="Search bikes"
+        aria-label={ariaLabel}
         className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm outline-none placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
       />
       {value ? (

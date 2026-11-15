@@ -4,7 +4,13 @@ import {
   allTags,
   bikesForKey,
   bikesGroupedByPlace,
+  allItemTags,
+  itemPlaceLabelOf,
+  makeItem,
   placeLabelOf,
+  searchItems,
+  withItem,
+  withoutItem,
   emptySnapshot,
   freeSlots,
   keysForBike,
@@ -44,6 +50,7 @@ function scene(): InventorySnapshot {
 
   return {
     bikes: [gazelle, bmx, folder, sold],
+    items: [],
     keys: [blueKey, redKey],
     slots,
     settings: { id: "app", zones: [{ code: "A", count: 3 }], lotConfiguredAt: 1, lastBackupAt: null },
@@ -228,3 +235,72 @@ describe("misc helpers", () => {
     expect(withKey(snapshot, extra).keys).toHaveLength(3);
   });
 });
+
+describe("items", () => {
+  function withItems(): InventorySnapshot {
+    const base = scene();
+    return {
+      ...base,
+      items: [
+        makeItem({
+          name: "MacBook Pro 14",
+          place: "Top shelf of the metal cupboard, grey sleeve",
+          tags: ["laptop", "work"],
+          notes: "charger lives in the side pocket",
+        }),
+        makeItem({ name: "Spray paint can", place: "Under the bench, in the tool crate", tags: ["paint"] }),
+        makeItem({ name: "Headphones" }),
+      ],
+    };
+  }
+
+  it("finds an item by name, tag, notes or place", () => {
+    const snapshot = withItems();
+    expect(searchItems(snapshot, { text: "macbook" }).map((i) => i.name)).toEqual(["MacBook Pro 14"]);
+    expect(searchItems(snapshot, { tag: "paint" }).map((i) => i.name)).toEqual(["Spray paint can"]);
+    expect(searchItems(snapshot, { text: "side pocket" }).map((i) => i.name)).toEqual(["MacBook Pro 14"]);
+    expect(searchItems(snapshot, { text: "crate" }).map((i) => i.name)).toEqual(["Spray paint can"]);
+  });
+
+  it("matches multi-word item queries in any order", () => {
+    const snapshot = withItems();
+    expect(searchItems(snapshot, { text: "paint bench" }).map((i) => i.name)).toEqual(["Spray paint can"]);
+    expect(searchItems(snapshot, { text: "bench paint" }).map((i) => i.name)).toEqual(["Spray paint can"]);
+    expect(searchItems(snapshot, { text: "paint laptop" })).toHaveLength(0);
+  });
+
+  it("sorts items by name", () => {
+    expect(searchItems(withItems()).map((i) => i.name)).toEqual([
+      "Headphones",
+      "MacBook Pro 14",
+      "Spray paint can",
+    ]);
+  });
+
+  it("collects item tags", () => {
+    expect(allItemTags(withItems())).toEqual(["laptop", "paint", "work"]);
+  });
+
+  it("is honest about a missing place", () => {
+    expect(itemPlaceLabelOf(makeItem({ name: "Headphones" }))).toBe("Place not recorded");
+    expect(itemPlaceLabelOf(makeItem({ name: "X", place: "  shelf  " }))).toBe("shelf");
+  });
+
+  it("adds, replaces and removes items without duplicates", () => {
+    const snapshot = withItems();
+    const first = snapshot.items[0];
+    const renamed = { ...first, name: "MacBook Air" };
+    const next = withItem(withItem(snapshot, renamed), renamed);
+    expect(next.items.filter((i) => i.id === first.id)).toHaveLength(1);
+    expect(next.items[0].name).toBe("MacBook Air");
+
+    expect(withoutItem(snapshot, first.id).items).toHaveLength(2);
+  });
+
+  it("keeps bikes and items completely separate", () => {
+    const snapshot = withItems();
+    expect(searchBikes(snapshot, { text: "macbook" })).toHaveLength(0);
+    expect(searchItems(snapshot, { text: "gazelle" })).toHaveLength(0);
+  });
+});
+

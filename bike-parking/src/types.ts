@@ -25,6 +25,21 @@ export interface Bike {
   updatedAt: number;
 }
 
+/**
+ * Anything that is not a bike: laptops, chargers, tyres, spray cans, headphones.
+ * Deliberately a small shape — name, where it is, tags, notes. Nothing else.
+ */
+export interface Item {
+  id: ID;
+  name: string;
+  /** Where it is stored, in your own words. Free text, any length. */
+  place: string;
+  tags: string[];
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface LotKey {
   id: ID;
   label: string;
@@ -70,6 +85,7 @@ export interface Settings {
 
 export interface InventorySnapshot {
   bikes: Bike[];
+  items: Item[];
   keys: LotKey[];
   slots: Slot[];
   settings: Settings;
@@ -91,4 +107,4 @@ export const STATUS_LABEL: Record<BikeStatus, string> = {
   sold: "Sold",
 };
 
-export type Tab = "lot" | "bikes" | "keys" | "settings";
+export type Tab = "lot" | "bikes" | "keys" | "items" | "settings";

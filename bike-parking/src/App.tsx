@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { BikesView } from "@/components/BikesView";
 import { BikeDetail } from "@/components/BikeDetail";
 import { BikeForm } from "@/components/BikeForm";
+import { ItemsView } from "@/components/ItemsView";
 import { KeysView } from "@/components/KeysView";
 import { LotSetup } from "@/components/LotSetup";
 import { LotView } from "@/components/LotView";
@@ -97,7 +98,8 @@ export default function App() {
             <div>
               <h1 className="text-sm font-black leading-tight text-slate-900">Bike Lot</h1>
               <p className="text-[10px] leading-tight text-slate-500">
-                {snapshot.bikes.length} bike{snapshot.bikes.length === 1 ? "" : "s"} · all on this phone
+                {snapshot.bikes.length} bike{snapshot.bikes.length === 1 ? "" : "s"} ·{" "}
+                {snapshot.items.length} item{snapshot.items.length === 1 ? "" : "s"} · on this phone
               </p>
             </div>
           </div>
@@ -147,6 +149,21 @@ export default function App() {
             onSaveKey={inventory.saveKey}
             onDeleteKey={inventory.deleteKey}
             onSetKeyOnBike={inventory.setKeyOnBike}
+          />
+        ) : null}
+
+        {tab === "items" ? (
+          <ItemsView
+            snapshot={snapshot}
+            onSaveItem={async (draft) => {
+              const saved = await inventory.saveItem(draft);
+              setToast(draft.id ? "Saved." : `${saved.name} added.`);
+              return saved;
+            }}
+            onDeleteItem={async (itemId) => {
+              await inventory.deleteItem(itemId);
+              setToast("Item removed.");
+            }}
           />
         ) : null}
 

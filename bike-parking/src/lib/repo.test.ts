@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { configureDb } from "./idb";
 import {
   allPhotoRecords,
+  saveItemRecord,
+  removeItemRecord,
   getPhotoBlob,
   loadSnapshot,
   removeBikeRecord,
@@ -12,7 +14,7 @@ import {
   saveSettingsRecord,
   syncSlots,
 } from "./repo";
-import { makeBike, makeKey } from "./model";
+import { makeBike, makeItem, makeKey } from "./model";
 import { buildSlots } from "./slots";
 import { DEFAULT_SETTINGS, type PhotoRecord } from "@/types";
 
@@ -127,6 +129,67 @@ describe("photos", () => {
   });
 });
 
+describe("items", () => {
+  it("saves, updates and removes a non-bike item", async () => {
+    const item = makeItem({ name: "MacBook Pro 14", place: "Top shelf" });
+    await saveItemRecord(item);
+    expect((await loadSnapshot()).items.map((i) => i.name)).toEqual(["MacBook Pro 14"]);
+
+    await saveItemRecord({ ...item, name: "MacBook Air" });
+    const updated = await loadSnapshot();
+    expect(updated.items).toHaveLength(1);
+    expect(updated.items[0].name).toBe("MacBook Air");
+
+    await removeItemRecord(item.id);
+    expect((await loadSnapshot()).items).toHaveLength(0);
+  });
+
+  it("keeps bikes and items side by side", async () => {
+    await saveBikeRecord(makeBike({ name: "Gazelle" }));
+    await saveItemRecord(makeItem({ name: "Charger" }));
+
+    const snapshot = await loadSnapshot();
+    expect(snapshot.bikes.map((b) => b.name)).toEqual(["Gazelle"]);
+    expect(snapshot.items.map((i) => i.name)).toEqual(["Charger"]);
+  });
+
+  it("upgrades a version-1 database without losing the bikes already in it", async () => {
+    const name = `bike-lot-migration-${++counter}`;
+
+    // Build a database exactly as the first release did: no "items" store.
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(name, 1);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        for (const store of ["bikes", "keys", "slots", "photos", "settings"]) {
+          database.createObjectStore(store, { keyPath: "id" });
+        }
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const tx = database.transaction("bikes", "readwrite");
+        tx.objectStore("bikes").put(makeBike({ name: "Old bike" }));
+        tx.oncomplete = () => {
+          database.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+
+    configureDb({ name, version: 2 });
+
+    const afterUpgrade = await loadSnapshot();
+    expect(afterUpgrade.bikes.map((b) => b.name)).toEqual(["Old bike"]);
+    expect(afterUpgrade.items).toEqual([]);
+
+    await saveItemRecord(makeItem({ name: "Laptop" }));
+    expect((await loadSnapshot()).items.map((i) => i.name)).toEqual(["Laptop"]);
+    expect((await loadSnapshot()).bikes).toHaveLength(1);
+  });
+});
+
 describe("replaceEverything", () => {
   it("replaces the current inventory completely (restore path)", async () => {
     await saveBikeRecord(makeBike({ name: "Old bike" }));
@@ -145,6 +208,7 @@ describe("replaceEverything", () => {
     await replaceEverything(
       {
         bikes: [bike],
+        items: [makeItem({ name: "Restored laptop", place: "Shelf 2" })],
         keys: [key],
         slots,
         settings: { ...DEFAULT_SETTINGS, lotConfiguredAt: 7 },
@@ -165,6 +229,7 @@ describe("replaceEverything", () => {
     expect(snapshot.keys.map((k) => k.label)).toEqual(["New key"]);
     expect(snapshot.slots.map((s) => s.code)).toEqual(["Z-01", "Z-02"]);
     expect(snapshot.settings.lotConfiguredAt).toBe(7);
+    expect(snapshot.items.map((i) => i.name)).toEqual(["Restored laptop"]);
     expect(await getPhotoBlob("old-photo")).toBeNull();
     expect(await allPhotoRecords()).toHaveLength(1);
   });

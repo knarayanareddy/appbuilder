@@ -9,7 +9,7 @@ import {
   encodeBackup,
   parseBackupText,
 } from "./backup";
-import { makeBike, makeKey } from "./model";
+import { makeBike, makeItem, makeKey } from "./model";
 import { buildSlots } from "./slots";
 import type { InventorySnapshot, PhotoRecord } from "@/types";
 
@@ -41,6 +41,7 @@ function fixture() {
   });
   const snapshot: InventorySnapshot = {
     bikes: [bike],
+    items: [makeItem({ name: "MacBook Pro", place: "Top shelf, grey sleeve", tags: ["laptop"], notes: "charger in pocket" })],
     keys: [key],
     slots,
     settings: { id: "app", zones: [{ code: "A", count: 2 }], lotConfiguredAt: 500, lastBackupAt: 900 },
@@ -93,6 +94,42 @@ describe("encodeBackup / decodeBackup", () => {
     expect(decoded.snapshot.settings.lastBackupAt).toBe(900);
     expect(readBytes(decoded.photos[0].data)).toBe("fake-jpeg-bytes");
     expect(decoded.photos[0].mimeType).toBe("image/jpeg");
+    expect(decoded.snapshot.items).toHaveLength(1);
+    expect(decoded.snapshot.items[0]).toMatchObject({
+      name: "MacBook Pro",
+      place: "Top shelf, grey sleeve",
+      tags: ["laptop"],
+      notes: "charger in pocket",
+    });
+  });
+
+  it("writes version 2 and still reads a version 1 backup", () => {
+    const v1 = {
+      kind: BACKUP_KIND,
+      version: 1,
+      slots: [],
+      keys: [],
+      bikes: [{ id: "b1", name: "Old bike" }],
+      photos: [],
+      settings: {},
+    };
+    const decoded = decodeBackup(v1);
+    expect(decoded.snapshot.bikes).toHaveLength(1);
+    expect(decoded.snapshot.items).toEqual([]);
+  });
+
+  it("drops item records with no id or no name", () => {
+    const decoded = decodeBackup({
+      kind: BACKUP_KIND,
+      version: 2,
+      slots: [],
+      keys: [],
+      bikes: [],
+      items: [{ id: "i1", name: "  " }, { name: "no id" }, { id: "i2", name: "Headphones" }],
+      photos: [],
+      settings: {},
+    });
+    expect(decoded.snapshot.items.map((i) => i.name)).toEqual(["Headphones"]);
   });
 
   it("restores a backup that has no written places (older exports)", () => {
