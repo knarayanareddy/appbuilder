@@ -127,44 +127,32 @@ jobs:
       - name: Note the signing certificate
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
-          OUT="$RUNNER_TEMP/cert.txt"
           SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          : > "$OUT"
+          RAW="$RUNNER_TEMP/raw.txt"
+          OUT="$RUNNER_TEMP/cert.txt"
+          : > "$RAW"
 
-          # 1. keytool reads the v1 (JAR) signature and needs no password.
-          keytool -printcert -jarfile "$APK" 2>/dev/null \
-            | sed -n 's/^[[:space:]]*SHA256: //p' | head -1 >> "$OUT" || true
-
-          # 2. apksigner is authoritative for v2/v3; it lives in build-tools.
-          if [ ! -s "$OUT" ]; then
-            APKSIGNER="$(find "$SDK" -maxdepth 4 -type f -name apksigner 2>/dev/null | sort -V | tail -1)"
-            if [ -n "$APKSIGNER" ]; then
-              "$APKSIGNER" verify --print-certs "$APK" 2>/dev/null \
-                | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1 >> "$OUT" || true
-            fi
+          # Ask three tools the same question and keep every word they say, then
+          # look for a 64-character hex digest rather than trusting one format.
+          keytool -printcert -jarfile "$APK" >> "$RAW" 2>&1 || true
+          APKSIGNER="$(find "$SDK" -maxdepth 4 -type f -name apksigner 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs "$APK" >> "$RAW" 2>&1 || true
+          fi
+          if [ -f "$HOME/.android/debug.keystore" ]; then
+            keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android >> "$RAW" 2>&1 || true
           fi
 
-          # 3. last resort: openssl over the v1 block.
-          if [ ! -s "$OUT" ]; then
-            mkdir -p "$RUNNER_TEMP/meta"
-            unzip -o -q "$APK" 'META-INF/*' -d "$RUNNER_TEMP/meta" 2>/dev/null || true
-            CERTFILE="$(ls "$RUNNER_TEMP"/meta/META-INF/*.RSA "$RUNNER_TEMP"/meta/META-INF/*.EC 2>/dev/null | head -1)"
-            if [ -n "$CERTFILE" ]; then
-              openssl pkcs7 -inform DER -in "$CERTFILE" -print_certs 2>/dev/null \
-                | openssl x509 -inform PEM -fingerprint -sha256 -noout 2>/dev/null \
-                | sed 's/^SHA256 Fingerprint=//; s/://g' | tr 'A-F' 'a-f' >> "$OUT" || true
-            fi
-          fi
-
-          if [ -s "$OUT" ]; then
-            echo "apk certificate SHA-256: $(cat "$OUT")"
+          DIGEST="$(tr -d ':' < "$RAW" | grep -o -E '[0-9a-fA-F]{64}' | head -1 | tr 'A-F' 'a-f')"
+          if [ -n "$DIGEST" ]; then
+            printf '%s\n' "$DIGEST" > "$OUT"
+            echo "apk signing certificate SHA-256: $DIGEST"
           else
-            printf 'unknown (apksigner=%s sdk=%s meta=%s)\n' \
-              "$(find "$SDK" -maxdepth 4 -type f -name apksigner 2>/dev/null | head -1 || echo none)" \
-              "$SDK" \
-              "$(unzip -l "$APK" 2>/dev/null | grep -c META-INF || true)" > "$OUT"
-            echo "could not read the certificate: $(cat "$OUT")"
+            printf 'unreadable :: %s\n' "$(tr '\n' ' ' < "$RAW" | cut -c1-300)" > "$OUT"
+            echo "certificate could not be read:"
+            head -30 "$RAW"
           fi
+
       - name: Publish the install link
         if: github.event_name != 'pull_request'
         env:
