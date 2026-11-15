@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import App from "./App";
-import { configureDb } from "@/lib/idb";
+import { configureDb, db } from "@/lib/idb";
 import { allPhotoRecords, loadSnapshot } from "@/lib/repo";
 
 let counter = 0;
@@ -338,5 +338,45 @@ describe("App — other items", () => {
     expect(await screen.findByText(/0 bikes · 1 item · on this phone/i)).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "Items" }));
     expect(await screen.findByText("Headphones")).toBeInTheDocument();
+  });
+});
+
+describe("App — items saved by an older version of the app", () => {
+  it("opens the Items tab instead of a blank screen", async () => {
+    const user = userEvent.setup();
+
+    // Exactly what the build before photos wrote: no photoIds field at all.
+    await db.put("items", {
+      id: "legacy-item",
+      name: "Old laptop",
+      place: "Top shelf",
+      tags: ["laptop"],
+      notes: "bought 2019",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await db.put("settings", {
+      id: "app",
+      zones: [],
+      lotConfiguredAt: 1,
+      lastBackupAt: null,
+    });
+
+    render(<App />);
+    await screen.findByText(/1 item · on this phone/i);
+
+    await user.click(screen.getByRole("button", { name: "Items" }));
+
+    expect(await screen.findByText("Old laptop")).toBeInTheDocument();
+    expect(screen.getByText("Top shelf")).toBeInTheDocument();
+    expect(screen.queryByText(/This screen could not be shown/i)).not.toBeInTheDocument();
+
+    // and it is usable: editing and saving it works
+    await user.click(screen.getByRole("button", { name: /Edit Old laptop/i }));
+    await user.click(screen.getByRole("button", { name: /Save changes/i }));
+    await waitFor(async () => {
+      const stored = await loadSnapshot();
+      expect(stored.items[0].photoIds).toEqual([]);
+    });
   });
 });

@@ -238,7 +238,7 @@ export function useInventory() {
 
         // Photos removed in the form are deleted from storage, not just unlinked.
         const kept = draft.photoIds.slice(0, MAX_ITEM_PHOTOS);
-        const dropped = base.photoIds.filter((id) => !kept.includes(id));
+        const dropped = (base.photoIds ?? []).filter((id) => !kept.includes(id));
         await Promise.all(dropped.map((id) => repo.removePhotoRecord(id)));
 
         const added: ID[] = [];
@@ -267,7 +267,7 @@ export function useInventory() {
     (itemId: ID) =>
       run(async () => {
         const item = snapshotRef.current.items.find((i) => i.id === itemId);
-        if (item) await Promise.all(item.photoIds.map((id) => repo.removePhotoRecord(id)));
+        if (item) await Promise.all((item.photoIds ?? []).map((id) => repo.removePhotoRecord(id)));
         await repo.removeItemRecord(itemId);
         setSnapshot((prev) => withoutItem(prev, itemId));
       }),

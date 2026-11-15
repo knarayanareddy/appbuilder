@@ -86,12 +86,14 @@ export function ItemsView({ snapshot, onSaveItem, onDeleteItem }: ItemsViewProps
         )
       ) : (
         <ul className="space-y-1.5">
-          {results.map((item) => (
+          {results.map((item) => {
+            const photos = item.photoIds ?? [];
+            return (
             <li key={item.id}>
               <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white p-2.5">
-                {item.photoIds.length > 0 ? (
+                {photos.length > 0 ? (
                   <PhotoThumb
-                    photoId={item.photoIds[0]}
+                    photoId={photos[0]}
                     alt={`${item.name} photo`}
                     className="h-11 w-11 shrink-0 rounded-lg"
                   />
@@ -113,16 +115,14 @@ export function ItemsView({ snapshot, onSaveItem, onDeleteItem }: ItemsViewProps
                   {item.notes.trim() ? (
                     <p className="mt-1 line-clamp-1 text-[11px] italic text-slate-500">{item.notes}</p>
                   ) : null}
-                  {item.tags.length > 0 || item.photoIds.length > 1 ? (
+                  {item.tags.length > 0 || photos.length > 1 ? (
                     <div className="mt-1 flex flex-wrap items-center gap-1">
                       {item.tags.map((value) => (
                         <Badge key={value} tone="violet">
                           {value}
                         </Badge>
                       ))}
-                      {item.photoIds.length > 1 ? (
-                        <Badge tone="slate">{item.photoIds.length} photos</Badge>
-                      ) : null}
+                      {photos.length > 1 ? <Badge tone="slate">{photos.length} photos</Badge> : null}
                     </div>
                   ) : null}
                 </button>
@@ -136,7 +136,8 @@ export function ItemsView({ snapshot, onSaveItem, onDeleteItem }: ItemsViewProps
                 </button>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

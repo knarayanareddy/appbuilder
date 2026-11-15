@@ -246,6 +246,29 @@ Kept it small and separate rather than bolting more fields onto `Bike`:
   save silently forever. Decoding is now capped at 8 seconds with a fallback to storing the
   original bytes.
 
+## 11. Bug — the Items tab blanked the screen
+
+Reported after the photos release: *"when i click on items, it shows all blank screen"*.
+
+Cause: adding `Item.photoIds` changed the shape of a record, but items already saved by the
+previous build simply **do not have that key**. `ItemsView` read `item.photoIds.length` on a
+value that was `undefined`, the render threw, and React unmounted the tree — a white page
+with no message. (The user's items were never lost; the list just could not draw them.)
+
+Three fixes, in order of importance:
+
+1. **Normalise on load.** `normalizeBike` / `normalizeItem` fill in every field an older
+   record might lack, at the single boundary where records come off disk. This is the real
+   fix: the shape of stored data must be allowed to lag behind the shape of the code.
+2. **Don't trust the field in the UI.** The Items list and the item mutations also guard
+   `photoIds` directly, so a stray record cannot repeat this.
+3. **Never blank the app.** An `ErrorBoundary` now wraps the tab content: a render error shows
+   "This screen could not be shown", keeps the shell and the data intact, and offers a way
+   back to the lot.
+
+Regression tests: a raw legacy item (no `photoIds`) loads with `[]`; the same record opens
+and saves in the Items tab without a blank screen; the boundary shows, reports and recovers.
+
 ### Deliberately not built
 
 Cloud sync, accounts, sharing, notifications, and encryption. Each one either contradicts

@@ -7,6 +7,8 @@ import {
   allItemTags,
   itemPlaceLabelOf,
   makeItem,
+  normalizeBike,
+  normalizeItem,
   placeLabelOf,
   searchItems,
   withItem,
@@ -233,6 +235,50 @@ describe("misc helpers", () => {
     const snapshot = scene();
     const extra = makeKey({ label: "Spare" });
     expect(withKey(snapshot, extra).keys).toHaveLength(3);
+  });
+});
+
+describe("records written by older versions", () => {
+  it("fills in every field an old bike record never had", () => {
+    const legacy = { id: "b1", name: "Old bike" } as unknown as Parameters<typeof normalizeBike>[0];
+    const bike = normalizeBike(legacy);
+    expect(bike).toMatchObject({
+      id: "b1",
+      name: "Old bike",
+      place: "",
+      slotId: null,
+      keyIds: [],
+      tags: [],
+      status: "stored",
+      notes: "",
+      bikePhotoId: null,
+      slotPhotoId: null,
+    });
+  });
+
+  it("gives an item saved before photos existed an empty photo list", () => {
+    // exactly what the pre-photos build wrote: no photoIds key at all
+    const legacy = {
+      id: "i1",
+      name: "MacBook",
+      place: "Shelf",
+      tags: ["laptop"],
+      notes: "n",
+      createdAt: 1,
+      updatedAt: 1,
+    } as unknown as Parameters<typeof normalizeItem>[0];
+
+    const item = normalizeItem(legacy);
+    expect(item.photoIds).toEqual([]);
+    expect(item.tags).toEqual(["laptop"]);
+    expect(item.place).toBe("Shelf");
+  });
+
+  it("leaves complete records untouched", () => {
+    const item = makeItem({ name: "Headphones", photoIds: ["p1"], tags: ["audio"] });
+    expect(normalizeItem(item)).toEqual(item);
+    const bike = makeBike({ name: "Gazelle", place: "Rack 3", tags: ["road"] });
+    expect(normalizeBike(bike)).toEqual(bike);
   });
 });
 

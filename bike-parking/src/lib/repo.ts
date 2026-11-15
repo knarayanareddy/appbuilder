@@ -1,4 +1,5 @@
 import { clearAll, db } from "./idb";
+import { normalizeBike, normalizeItem } from "./model";
 import { DEFAULT_SETTINGS } from "@/types";
 import type { Bike, InventorySnapshot, Item, LotKey, PhotoRecord, Settings, Slot } from "@/types";
 
@@ -18,9 +19,10 @@ export async function loadSnapshot(): Promise<InventorySnapshot> {
   ]);
 
   return {
-    // Records written before free-text places existed get an empty place.
-    bikes: bikes.map((bike) => ({ ...bike, place: bike.place ?? "" })),
-    items: items.map((item) => ({ ...item, place: item.place ?? "" })),
+    // Records written by older versions are filled in, never rejected: a bike
+    // may predate free-text places, an item may predate photos.
+    bikes: bikes.map(normalizeBike),
+    items: items.map(normalizeItem),
     keys,
     slots: slots.sort((a, b) => (a.zone === b.zone ? a.index - b.index : a.zone.localeCompare(b.zone))),
     settings: settingsRows[0] ?? { ...DEFAULT_SETTINGS },

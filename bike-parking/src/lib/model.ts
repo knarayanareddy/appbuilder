@@ -58,6 +58,47 @@ export function makeItem(partial: Partial<Item> = {}): Item {
   };
 }
 
+/** A record as it may exist on disk: written by an older version with fewer fields. */
+type StoredBike = Partial<Bike> & { id: string; name: string };
+type StoredItem = Partial<Item> & { id: string; name: string };
+
+/**
+ * Fill in fields that a previous version of the app did not store. Without this,
+ * an item saved before photos existed arrives with `photoIds: undefined` and any
+ * `.length` on it throws — which blanks the whole screen.
+ */
+export function normalizeBike(stored: StoredBike): Bike {
+  const now = Date.now();
+  return {
+    id: stored.id,
+    name: stored.name ?? "",
+    place: stored.place ?? "",
+    slotId: stored.slotId ?? null,
+    keyIds: stored.keyIds ?? [],
+    tags: stored.tags ?? [],
+    status: stored.status ?? "stored",
+    notes: stored.notes ?? "",
+    bikePhotoId: stored.bikePhotoId ?? null,
+    slotPhotoId: stored.slotPhotoId ?? null,
+    createdAt: stored.createdAt ?? now,
+    updatedAt: stored.updatedAt ?? now,
+  };
+}
+
+export function normalizeItem(stored: StoredItem): Item {
+  const now = Date.now();
+  return {
+    id: stored.id,
+    name: stored.name ?? "",
+    place: stored.place ?? "",
+    tags: stored.tags ?? [],
+    notes: stored.notes ?? "",
+    photoIds: stored.photoIds ?? [],
+    createdAt: stored.createdAt ?? now,
+    updatedAt: stored.updatedAt ?? now,
+  };
+}
+
 export function byName(a: Bike | Item, b: Bike | Item): number {
   return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
 }

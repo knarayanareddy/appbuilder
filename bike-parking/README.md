@@ -198,7 +198,7 @@ of hanging the save forever.
 
 ### Tests
 
-138 tests across the pure model, the storage layer, backup round-trips, and the UI
+147 tests across the pure model, the storage layer, backup round-trips, and the UI
 (onboarding → add bike → search → reopen). `fake-indexeddb` stands in for the device
 database. Notable cases covered: a long written place is stored verbatim, search finds a
 bike by name, tag, note or place description, multi-word search matches in any order, the
@@ -212,6 +212,17 @@ Not covered by tests: real camera capture and real canvas downscaling (both need
 and the Capacitor filesystem/share calls (they need a device).
 
 ---
+
+## If a screen ever fails
+
+A render error inside a screen is caught by `ErrorBoundary`: the app keeps its shell,
+says "This screen could not be shown", and offers a way back to the lot. It never leaves a
+blank page — and it never touches the stored records.
+
+Records are also **normalised on load** (`normalizeBike` / `normalizeItem`). A record written
+by an older version of the app may be missing fields that did not exist yet (a bike saved
+before free-text places, an item saved before photos); those are filled in with safe defaults
+rather than throwing. There are tests for both legacy shapes.
 
 ## Known limits
 

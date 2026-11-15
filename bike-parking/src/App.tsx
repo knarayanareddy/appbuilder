@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Loader2, Warehouse } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BikesView } from "@/components/BikesView";
 import { BikeDetail } from "@/components/BikeDetail";
 import { BikeForm } from "@/components/BikeForm";
@@ -125,6 +126,7 @@ export default function App() {
           </div>
         ) : null}
 
+        <ErrorBoundary resetKey={tab} onReset={() => setTab("lot")}>
         {tab === "lot" ? (
           <LotView
             snapshot={snapshot}
@@ -185,6 +187,7 @@ export default function App() {
             }}
           />
         ) : null}
+        </ErrorBoundary>
       </main>
 
       {toast ? (

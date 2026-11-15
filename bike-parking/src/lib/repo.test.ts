@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { configureDb } from "./idb";
+import { configureDb, db } from "./idb";
 import {
   allPhotoRecords,
   saveItemRecord,
@@ -75,6 +75,46 @@ describe("records", () => {
 
     const snapshot = await loadSnapshot();
     expect(snapshot.slots.map((s) => s.code)).toEqual(["A-01", "A-02", "B-01", "B-02"]);
+  });
+});
+
+describe("records from an older version", () => {
+  it("loads an item written before photos existed, with an empty photo list", async () => {
+    // Bypasses the types on purpose: this is the shape the previous build wrote.
+    await db.put("items", {
+      id: "legacy-item",
+      name: "Old laptop",
+      place: "Top shelf",
+      tags: ["laptop"],
+      notes: "",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    const snapshot = await loadSnapshot();
+    expect(snapshot.items).toHaveLength(1);
+    expect(snapshot.items[0].photoIds).toEqual([]);
+    expect(snapshot.items[0].place).toBe("Top shelf");
+  });
+
+  it("loads a bike written before free-text places existed", async () => {
+    await db.put("bikes", {
+      id: "legacy-bike",
+      name: "Old bike",
+      slotId: null,
+      keyIds: [],
+      tags: [],
+      status: "stored",
+      notes: "",
+      bikePhotoId: null,
+      slotPhotoId: null,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    const snapshot = await loadSnapshot();
+    expect(snapshot.bikes[0].place).toBe("");
+    expect(snapshot.bikes[0].tags).toEqual([]);
   });
 });
 
