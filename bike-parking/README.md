@@ -112,7 +112,9 @@ npm run dev          # http://localhost:5180
 ## Get the APK onto the phone
 
 The APK is built by GitHub Actions, because it needs the Android SDK. Each build is
-`app-debug.apk`, about **3.8 MB** (4,014,714 bytes at the time of writing).
+`app-debug.apk`, about **4.2 MB** (4,377,552 bytes in the `bike-lot-latest` release; the
+downloaded artifact `bike-lot-apk.zip` is 4,014,714 bytes, because a zip of an APK is smaller
+than the APK).
 
 ### Straight from the phone (one link, no computer)
 
