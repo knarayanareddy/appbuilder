@@ -140,9 +140,46 @@ to the repository instead.
 3. Copy it to the phone (USB, Drive, email), tap it, allow "install unknown apps" for the
    app you opened it with, and install.
 
-It is a *debug* APK: signed with the standard debug key, so it installs fine by sideloading
-but is not suitable for the Play Store. If this app earns its place, the next step would be
-a release build with a real keystore.
+It is a *debug* APK: it installs fine by sideloading, but it is not suitable for the Play
+Store. If this app earns its place, the next step would be a release build with a Play key.
+
+### The signing key is pinned — here is why that matters
+
+Android only installs a new APK over an existing one when **both carry the same signature**.
+Builds used to be signed with whatever debug keystore the CI runner happened to generate, and
+each runner makes a fresh one — three consecutive runs produced three different certificates:
+
+```
+06a69a9f…5e0a63     19405f29…5d7cbb     b012280b…391202
+```
+
+The consequence is unpleasant and quiet: every "update" would be refused by the installer,
+the only way in being an uninstall — and uninstalling deletes the app's data directory, which
+holds every bike, item and photo. The fix is one committed key
+(`keystore/bike-lot.p12`), used by `zipalign` + `apksigner` in the build, with the digest
+published in the release notes so it can be checked from outside.
+
+Current certificate SHA-256:
+
+```
+266274de1da8df31dc9d4916eb2698d670caf8865104593b5247c0a3fdff44c1
+```
+
+`keystore/README.md` records the alias, password, validity and — importantly — what this key
+does *not* protect (it is a public development key; it is not evidence of provenance).
+
+**One-time migration.** The app installed before this change was signed with a key that no
+longer exists, so the next install cannot go on top of it. Do this once, in this order:
+
+1. In the app: **Settings → Back up now**. That writes one JSON file (bikes, items, keys,
+   photos) to `Documents/BikeLot` and offers the Android share sheet — save it somewhere off
+   the phone (Drive, email, computer).
+2. Uninstall Bike Lot.
+3. Install the new APK.
+4. **Settings → Restore**, pick the backup file.
+
+From then on, every build shares one signature and installs straight over the previous one
+with the data untouched.
 
 ### Put every build in Drive (optional — easier to skip)
 

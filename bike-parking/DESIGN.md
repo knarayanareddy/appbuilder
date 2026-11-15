@@ -338,6 +338,47 @@ Clients tabs, which is why a numbered list written against the old UI sent the r
 wrong order. The setup now lives in `DRIVE-UPLOAD.md` rather than the README, because nine
 tenths of readers should never do it.
 
+## 14. The builds were un-upgradable
+
+Found while answering "can you edit an APK if I give you one?" — the honest answer needed a
+digression about signing, and the digression turned into a bug report against this app.
+
+Android installs an APK over an existing one only if both are signed by the same key. The
+builds took whatever debug keystore Gradle happened to find or create, and every CI runner
+creates a fresh one, so consecutive runs were three different app identities:
+
+```
+run 43763243349  06a69a9f…5e0a63
+run 43763544720  19405f29…5d7cbb     (same commit, different runner)
+run 43763861086  b012280b…391202
+```
+
+Measured, not assumed. The first attempt to read the certificate said "unknown" — the APK is
+v2-only, so `keytool -printcert -jarfile` answers "Not a signed jar file", and the apksigner
+path had been locating the tool at a hardcoded path the runner does not use. Loosening the
+extraction to "any 64-character hex string in what the tools said" turned a formatting
+assumption into a measurement, and the measurement was the bug.
+
+The damage was one uninstall away at all times: an install that Android refuses looks like
+"App not installed", the obvious workaround is to uninstall, and an uninstall takes the app's
+data directory with it — bikes, items, photos. Nothing in the app could have warned anyone; it
+is invisible until the moment it costs the inventory.
+
+Fix: `keystore/bike-lot.p12` is committed and every build is re-signed with it after Gradle
+finishes (`zipalign` then `apksigner`, both already on the runner), with `apksigner verify`
+failing the build if the result is not properly signed. The certificate digest is written into
+the release notes, which is how this was measured without being able to download build logs.
+
+Two deliberate trade-offs:
+
+- The key is in a public repository. That makes it worthless as evidence of provenance — but
+  it is only an update chain for a sideloaded personal app, and the alternative (a secret the
+  user must paste into GitHub) was rejected by the same reasoning that retired the Drive
+  setup: fewer manual steps, or it does not happen. `keystore/README.md` says this out loud.
+- The migration costs one uninstall, because the key that signed the installed copy no longer
+  exists. The README therefore leads the migration with "Back up now", which is exactly the
+  flow the app already has, and this is the reason the backup feature earns its keep.
+
 ### Deliberately not built
 
 Cloud sync, accounts, sharing, notifications, and encryption. Each one either contradicts
