@@ -1,12 +1,16 @@
 import { useRef } from "react";
 import { Camera, ImagePlus } from "lucide-react";
 import { PhotoThumb } from "./PhotoThumb";
+import { canUseCameraCapture } from "@/lib/device";
 
 /**
  * Two inputs: one opens the camera directly (`capture`), one opens the gallery.
  * Both are plain <input type="file"> — the Android WebView routes them to the
  * system camera/gallery, so there is no plugin, no permission prompt and nothing
  * to download.
+ *
+ * A laptop or desktop browser ignores `capture`, so both inputs would open the
+ * same file dialog; there we show one picker and say so.
  */
 export function PhotoPicker({
   label,
@@ -25,6 +29,11 @@ export function PhotoPicker({
   const cameraInput = useRef<HTMLInputElement>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
 
+  const canCapture = canUseCameraCapture();
+  const hasPhoto = Boolean(photoId || previewUrl);
+
+  const openPicker = () => (canCapture ? cameraInput : libraryInput).current?.click();
+
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) onPick(file);
@@ -35,7 +44,7 @@ export function PhotoPicker({
     <div className="rounded-xl border border-slate-200 bg-white p-2">
       <div className="mb-1.5 flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-        {photoId || previewUrl ? (
+        {hasPhoto ? (
           <button type="button" onClick={onRemove} className="text-[11px] font-semibold text-red-600">
             Remove
           </button>
@@ -50,42 +59,50 @@ export function PhotoPicker({
         )}
         <button
           type="button"
-          onClick={() => cameraInput.current?.click()}
+          onClick={openPicker}
           aria-label={`Take ${label.toLowerCase()} photo`}
           className="absolute inset-0 flex items-end justify-center pb-1.5"
         >
           <span className="rounded-full bg-slate-900/70 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur">
-            {photoId || previewUrl ? "Replace" : "Tap to add"}
+            {hasPhoto ? "Replace" : "Tap to add"}
           </span>
         </button>
       </div>
 
-      <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-        <button
-          type="button"
-          onClick={() => cameraInput.current?.click()}
-          className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700 active:bg-slate-100"
-        >
-          <Camera size={13} /> Camera
-        </button>
-        <button
-          type="button"
-          onClick={() => libraryInput.current?.click()}
-          className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700 active:bg-slate-100"
-        >
-          <ImagePlus size={13} /> Gallery
-        </button>
-      </div>
+      {canCapture ? (
+        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => cameraInput.current?.click()}
+            className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700 active:bg-slate-100"
+          >
+            <Camera size={13} /> Camera
+          </button>
+          <button
+            type="button"
+            onClick={() => libraryInput.current?.click()}
+            className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700 active:bg-slate-100"
+          >
+            <ImagePlus size={13} /> Gallery
+          </button>
+        </div>
+      ) : (
+        <p className="mt-1.5 text-center text-[10px] text-slate-400">
+          Picks an image file — the camera opens on the phone.
+        </p>
+      )}
 
-      <input
-        ref={cameraInput}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleChange}
-        aria-label={`${label} camera input`}
-      />
+      {canCapture ? (
+        <input
+          ref={cameraInput}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleChange}
+          aria-label={`${label} camera input`}
+        />
+      ) : null}
       <input
         ref={libraryInput}
         type="file"

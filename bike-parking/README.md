@@ -127,6 +127,10 @@ The `android/` folder is **not committed** — it is generated from `capacitor.c
 `npx cap add android` on every build. That keeps a large, machine-specific, constantly
 regenerating tree out of the repository.
 
+Because the folder is generated, small manifest fixes live in
+`scripts/patch-android-manifest.py` and are applied by the workflow right after
+`npx cap add android` (currently one: declaring the camera intent, see *Photos*).
+
 ---
 
 ## How it works
@@ -191,6 +195,19 @@ drawn onto a canvas, re-encoded as JPEG at 1280 px / quality 0.75, and stored as
 plus a MIME type (bytes rather than a `Blob`, because Blob support in structured-clone
 varies between storage engines).
 
+The camera button is only shown where a camera can actually be opened. Phones and tablets
+honour the `capture` attribute; a laptop or desktop browser **ignores** it, so a
+`capture` input and a plain input open the very same file dialog — which is why two buttons
+looked identical on a Mac. On a computer the app therefore shows one button ("Add photo" for
+items, "Gallery" for the bike photos) with a line saying that taking the picture works on the
+phone. `src/lib/device.ts` makes that call; nothing is uploaded either way.
+
+On Android the camera app also has to be *visible* to the app: Android 11+ hides other apps
+unless their intents are declared, and Capacitor asks the system whether anything handles
+`ACTION_IMAGE_CAPTURE` before launching it. `scripts/patch-android-manifest.py` adds that
+`<queries>` entry to the generated `AndroidManifest.xml` during the CI build; without it the
+lookup comes back empty and Capacitor quietly falls back to the photo picker.
+
 Bikes get a photo of the bike and a photo of the place; items get a strip of up to six (the
 thing, its label, its charger). Decoding is capped at 8 seconds: if an image neither loads
 nor errors — which some WebViews do for odd formats — the original bytes are stored instead
@@ -198,14 +215,15 @@ of hanging the save forever.
 
 ### Tests
 
-147 tests across the pure model, the storage layer, backup round-trips, and the UI
+152 tests across the pure model, the storage layer, backup round-trips, and the UI
 (onboarding → add bike → search → reopen). `fake-indexeddb` stands in for the device
 database. Notable cases covered: a long written place is stored verbatim, search finds a
 bike by name, tag, note or place description, multi-word search matches in any order, the
 words-only mode never asks for a layout, a sold bike frees its numbered place, a deleted key
 detaches from every bike, a layout change that removes places reports the affected bikes, a
 corrupt photo in a backup does not sink the restore, a photo attached to an item is stored
-as an `item`-kind record and survives a reload, a reload reads everything back from disk, and
+as an `item`-kind record and survives a reload, a phone is offered a camera button
+while a computer is offered one file picker, a reload reads everything back from disk, and
 a version-1 database upgrades to the items store without losing a single bike.
 
 Not covered by tests: real camera capture and real canvas downscaling (both need a browser),

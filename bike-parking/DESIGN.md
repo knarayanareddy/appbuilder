@@ -32,7 +32,7 @@ build, and a GitHub Actions job that produces the debug APK.
 |---|---|---|
 | Add / edit / delete a bike record | Trivial | Form + list, persisted locally |
 | Free-text "where is it stored" | Trivial | …but see 3.2, free text is the weak version |
-| Photo of the bike / photo of the spot | Easy | `<input type="file" accept="image/*" capture="environment">` opens the phone camera directly. Works offline, no permission prompts, no native plugin. |
+| Photo of the bike / photo of the spot | Easy | `<input type="file" accept="image/*" capture="environment">` opens the phone camera directly. Works offline, no permission prompts, no native plugin. On a desktop browser `capture` is ignored — see 12. |
 | Search by name | Trivial | 60 records is nothing |
 | Which key unlocks it | Easy, *if* modelled properly | A key usually opens several bikes — model keys as their own entity, not a text field |
 | Works offline | Easy | It is a local page; there is nothing to fetch |
@@ -268,6 +268,35 @@ Three fixes, in order of importance:
 
 Regression tests: a raw legacy item (no `photoIds`) loads with `[]`; the same record opens
 and saves in the Items tab without a blank screen; the boundary shows, reports and recovers.
+
+## 12. Bug — on a Mac the camera button opened the gallery
+
+Reported after the photos release: *"how come both camera/take photo and gallery option both
+lead to gallery to add pictures … i am trying on macbook"*.
+
+Not a fault in the app, but a fault in what the app promised. `capture` is part of the file
+input spec, and desktop browsers implement it as a no-op: `accept="image/*" capture` and
+`accept="image/*"` both open the OS file dialog, because no web page may open a webcam
+without `getUserMedia` (which needs a permission prompt, and inside an Android WebView needs
+native camera permission — a much bigger surface than the job needs). So on a computer the
+two buttons were duplicates, and one of them lied.
+
+The fix is to promise only what the platform can do: `canUseCameraCapture()` in
+`src/lib/device.ts` looks for a mobile user agent (plus >1 touch points, because iPadOS
+claims to be a Mac), and the pickers render two buttons on a phone and one button plus a
+one-line explanation on a computer.
+
+The Android side needed a real fix, though. Capacitor turns `capture` into
+`MediaStore.ACTION_IMAGE_CAPTURE` and first calls `Intent.resolveActivity` to see whether a
+camera app exists. Android 11+ filters exactly that query unless the intent is declared in
+`<queries>`, so on a modern phone the lookup returns null and Capacitor falls back to the
+file picker — the same "camera does nothing" symptom, on the device where the feature
+matters. `scripts/patch-android-manifest.py` inserts the `<queries>` entry into the manifest
+that `cap add android` generates, and the workflow runs it before Gradle.
+
+Tested: `device.test.ts` covers the Android/desktop/iPad decisions, `ItemsView.test.tsx`
+covers both button layouts and that a picked file becomes a pending photo either way, and the
+end-to-end photo test now runs as a phone.
 
 ### Deliberately not built
 

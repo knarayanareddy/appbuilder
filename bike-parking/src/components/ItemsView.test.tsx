@@ -1,10 +1,15 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ItemsView } from "./ItemsView";
 import { itemsSnapshot, wordsSnapshot } from "@/test/fixtures";
+import { pretendComputer, pretendPhone, resetDevice } from "@/test/device";
 import type { ItemDraft } from "@/hooks/useInventory";
 import type { InventorySnapshot } from "@/types";
+
+afterEach(() => {
+  resetDevice();
+});
 
 function setup(overrides: { snapshot?: InventorySnapshot } = {}) {
   const onSaveItem = vi.fn().mockResolvedValue({});
@@ -140,15 +145,23 @@ describe("ItemsView", () => {
     expect(within(sheet).getAllByRole("button", { name: /Remove photo/i })).toHaveLength(2);
   });
 
-  it("attaches a photo picked from the camera", async () => {
+  it("attaches a photo taken with the camera on a phone", async () => {
+    pretendPhone();
     const user = userEvent.setup();
     const props = setup({ snapshot: { ...wordsSnapshot(), items: [] } });
 
     await user.click(screen.getByRole("button", { name: /Add the first item/i }));
     await user.type(screen.getByLabelText(/Item name/i), "Headphones");
 
+    // Both routes are real on a phone: one opens the camera, one the gallery.
+    expect(screen.getByRole("button", { name: /Take photo/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /From gallery/i })).toBeInTheDocument();
+
+    const camera = screen.getByLabelText(/Item photo camera input/i);
+    expect(camera).toHaveAttribute("capture", "environment");
+
     const file = new File(["fake bytes"], "headphones.jpg", { type: "image/jpeg" });
-    fireEvent.change(screen.getByLabelText(/Item photo camera input/i), { target: { files: [file] } });
+    fireEvent.change(camera, { target: { files: [file] } });
 
     await user.click(screen.getByRole("button", { name: /Save item/i }));
 
@@ -156,6 +169,30 @@ describe("ItemsView", () => {
     const draft = props.onSaveItem.mock.calls[0][0] as ItemDraft;
     expect(draft.newPhotos).toHaveLength(1);
     expect(draft.photoIds).toEqual([]);
+  });
+
+  it("offers one picker on a computer, where a capture input would open the same dialog", async () => {
+    pretendComputer();
+    const user = userEvent.setup();
+    const props = setup({ snapshot: { ...wordsSnapshot(), items: [] } });
+
+    await user.click(screen.getByRole("button", { name: /Add the first item/i }));
+    await user.type(screen.getByLabelText(/Item name/i), "Headphones");
+
+    expect(screen.getByRole("button", { name: /Add photo/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Take photo/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /From gallery/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Item photo camera input/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/works on the phone/i)).toBeInTheDocument();
+
+    const file = new File(["fake bytes"], "headphones.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText(/Item photo gallery input/i), { target: { files: [file] } });
+
+    await user.click(screen.getByRole("button", { name: /Save item/i }));
+
+    await waitFor(() => expect(props.onSaveItem).toHaveBeenCalled());
+    const draft = props.onSaveItem.mock.calls[0][0] as ItemDraft;
+    expect(draft.newPhotos).toHaveLength(1);
   });
 
   it("drops a removed photo from the saved list", async () => {

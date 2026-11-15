@@ -1,15 +1,20 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import App from "./App";
 import { configureDb, db } from "@/lib/idb";
 import { allPhotoRecords, loadSnapshot } from "@/lib/repo";
+import { pretendPhone, resetDevice } from "@/test/device";
 
 let counter = 0;
 
 beforeEach(() => {
   counter += 1;
   configureDb({ name: `bike-lot-app-test-${counter}` });
+});
+
+afterEach(() => {
+  resetDevice();
 });
 
 describe("App — first run", () => {
@@ -297,6 +302,8 @@ describe("App — other items", () => {
   });
 
   it("keeps a picture with an item, stored on the device", async () => {
+    // The deliverable is the phone, so take the picture the way a phone does.
+    pretendPhone();
     const { user, view } = await startOnItems();
 
     await user.click(screen.getByRole("button", { name: /Add the first item/i }));

@@ -83,6 +83,12 @@ jobs:
       - name: Sync the web build into it
         run: npx cap sync android
 
+      # Android 11+ hides other apps unless their intents are declared. Capacitor asks
+      # whether anything handles ACTION_IMAGE_CAPTURE before launching the camera, so
+      # without this the "Take photo" button silently opens the photo picker instead.
+      - name: Declare the camera intent
+        run: python3 scripts/patch-android-manifest.py
+
       - name: Accept SDK licences
         run: |
           SDKMANAGER="$(command -v sdkmanager || true)"
@@ -104,6 +110,7 @@ jobs:
 
       - name: Report the APK
         run: |
+          grep -A4 "<queries>" android/app/src/main/AndroidManifest.xml
           ls -lh android/app/build/outputs/apk/debug/
           du -h android/app/build/outputs/apk/debug/app-debug.apk
 
