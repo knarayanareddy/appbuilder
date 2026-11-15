@@ -116,3 +116,50 @@ export function clozeParts(sentence: string): { before: string; word: string; af
     after: words.slice(index + 1).join(" "),
   };
 }
+
+/** The words of a sentence, punctuation kept, for the tap-to-build drill. */
+export function splitWords(value: string): string[] {
+  return value.split(/\s+/).filter(Boolean);
+}
+
+export function sameSequence(given: string[], expected: string[]): boolean {
+  if (given.length !== expected.length) return false;
+  return given.every((word, index) => normalise(word) === normalise(expected[index]));
+}
+
+export function shuffle<T>(list: T[], random: () => number = Math.random): T[] {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+/**
+ * A word bank: the sentence's own words, shuffled, plus a couple of decoys taken from
+ * other sentences in the same module so guessing by shape does not pay off.
+ */
+export function buildBank(expected: string, decoys: string[], random: () => number = Math.random): string[] {
+  const words = splitWords(expected);
+  const extra = decoys
+    .map((word) => word.trim())
+    .filter((word) => word.length > 1 && !words.some((own) => normalise(own) === normalise(word)))
+    .slice(0, 2);
+  return shuffle([...words, ...extra], random);
+}
+
+/** Four options: the right one and three from other sentences, same order every time. */
+export function pickOptions(
+  correct: string,
+  pool: string[],
+  count = 4,
+  random: () => number = Math.random,
+): string[] {
+  const chosen = shuffle(
+    pool.filter((option) => normalise(option) !== normalise(correct)),
+    random,
+  ).slice(0, Math.max(0, count - 1));
+  const options = shuffle([correct, ...chosen], random);
+  return options;
+}

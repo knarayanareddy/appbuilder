@@ -46,10 +46,10 @@ export function initialStability(grade: number): number {
 }
 
 /** A card for a sentence that has never been seen. */
-export function newCard(sentenceId: string, grade: number, now: number, retention: number): CardState {
+export function newCard(itemId: string, grade: number, now: number, retention: number): CardState {
   const stability = initialStability(grade);
   return {
-    sentenceId,
+    itemId,
     stage: 0,
     stability,
     difficulty: initialDifficulty(grade),

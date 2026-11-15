@@ -1,28 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Attempt, type CardState, type Snapshot } from "@/types";
-import { SENTENCES } from "./content";
+import { buildRegistry, itemKey, unitKey, type Registry } from "./module";
 import { DAY_MS } from "./fsrs";
 import {
   applyAnswer,
-  buildQueue,
+  buildSession,
   dueCount,
   gradeFor,
   introducedToday,
   kindForStage,
   newAvailable,
   startOfDay,
-  type QueueItem,
+  type SessionItem,
 } from "./session";
 
 const NOW = 1_700_000_000_000;
+const registry: Registry = buildRegistry([]);
+const FIRST = itemKey("nl-basis", "kennismaking", "s001");
+const SECOND = itemKey("nl-basis", "kennismaking", "s002");
 
 function snapshot(cards: CardState[] = [], attempts: Attempt[] = []): Snapshot {
-  return { cards, attempts, settings: DEFAULT_SETTINGS };
+  return { cards, attempts, settings: DEFAULT_SETTINGS, modules: [], reports: [] };
 }
 
-function card(sentenceId: string, overrides: Partial<CardState> = {}): CardState {
+function card(itemId: string, overrides: Partial<CardState> = {}): CardState {
   return {
-    sentenceId,
+    itemId,
     stage: 1,
     stability: 4,
     difficulty: 5,
@@ -34,28 +37,39 @@ function card(sentenceId: string, overrides: Partial<CardState> = {}): CardState
   };
 }
 
-describe("session", () => {
-  it("maps a stage to a drill and back again", () => {
+const deterministic = () => 0.42;
+
+describe("the drill ladder", () => {
+  it("walks from reading to production", () => {
     expect(kindForStage(0)).toBe("study");
     expect(kindForStage(1)).toBe("cloze");
-    expect(kindForStage(2)).toBe("listen");
-    expect(kindForStage(3)).toBe("produce");
+    expect(kindForStage(2)).toBe("choice");
+    expect(kindForStage(3)).toBe("bank");
+    expect(kindForStage(4)).toBe("listen");
+    expect(kindForStage(5)).toBe("produce");
+    expect(kindForStage(99)).toBe("produce");
   });
 
-  it("queues due cards and the day's new sentences, reviews first", () => {
-    const queue = buildQueue(snapshot([card(SENTENCES[0].id), card(SENTENCES[1].id)]), NOW);
+  it("grades an almost-answer as hard rather than good", () => {
+    expect(gradeFor({ correct: true, almost: false })).toBe(3);
+    expect(gradeFor({ correct: true, almost: true })).toBe(2);
+    expect(gradeFor({ correct: false, almost: false })).toBe(1);
+  });
+});
+
+describe("daily session", () => {
+  it("does reviews first and drops a new sentence in every fifth slot", () => {
+    const queue = buildSession(registry, snapshot([card(FIRST), card(SECOND)]), NOW, { mode: "daily" });
 
     expect(queue.slice(0, 2).every((item) => !item.isNew)).toBe(true);
-    const newItems = queue.filter((item) => item.isNew);
-    expect(newItems).toHaveLength(DEFAULT_SETTINGS.dailyNew);
-    // the fifth slot is the first new sentence: four reviews, then something new
+    expect(queue.filter((item) => item.isNew)).toHaveLength(DEFAULT_SETTINGS.dailyNew);
     expect(queue[4]?.isNew).toBe(true);
   });
 
-  it("respects the new-sentence allowance once they have been introduced today", () => {
+  it("respects the pace once sentences have been introduced today", () => {
     const introduced: Attempt = {
       id: "a",
-      sentenceId: SENTENCES[0].id,
+      itemId: FIRST,
       kind: "study",
       at: startOfDay(NOW) + 1000,
       grade: 2,
@@ -66,43 +80,97 @@ describe("session", () => {
 
     expect(introducedToday([introduced], NOW)).toBe(1);
     expect(introducedToday([{ ...introduced, at: NOW - 3 * DAY_MS }], NOW)).toBe(0);
-    expect(newAvailable(snapshot([], [introduced]), NOW)).toBe(DEFAULT_SETTINGS.dailyNew - 1);
+    expect(newAvailable(registry, snapshot([], [introduced]), NOW)).toBe(DEFAULT_SETTINGS.dailyNew - 1);
   });
 
-  it("counts only cards that are due", () => {
-    expect(dueCount(snapshot([card(SENTENCES[0].id), card(SENTENCES[1].id, { due: NOW + DAY_MS })]), NOW)).toBe(1);
+  it("counts only cards that are actually due", () => {
+    expect(dueCount(snapshot([card(FIRST), card(SECOND, { due: NOW + DAY_MS })]), NOW)).toBe(1);
+  });
+});
+
+describe("unlimited modes", () => {
+  it("practise never runs out of material, even at pace zero", () => {
+    const tight = { ...DEFAULT_SETTINGS, dailyNew: 0 };
+    const queue = buildSession(registry, { ...snapshot([]), settings: tight }, NOW, { mode: "practice", limit: 40 });
+    expect(queue.length).toBe(40);
+    expect(queue.every((item) => item.isNew)).toBe(true);
   });
 
-  it("introduces a new sentence and moves it straight to the first drill", () => {
-    const item: QueueItem = {
-      sentence: SENTENCES[0],
-      card: card(SENTENCES[0].id),
-      kind: "study",
-      isNew: true,
+  it("practise prioritises what is weakest after the due cards", () => {
+    const weak = card(FIRST, { due: NOW + DAY_MS, stability: 1 });
+    const strong = card(SECOND, { due: NOW + DAY_MS, stability: 30 });
+    const queue = buildSession(registry, snapshot([weak, strong]), NOW, { mode: "practice", limit: 4 });
+    expect(queue[0].key).toBe(FIRST);
+  });
+
+  it("a quiz tests instead of teaching", () => {
+    const queue = buildSession(registry, snapshot([card(FIRST, { stage: 0 })]), NOW, { mode: "quiz", limit: 12 }, deterministic);
+    expect(queue).toHaveLength(12);
+    expect(queue.some((item) => item.kind === "study")).toBe(false);
+    // The card that had only ever been read is served as a choice, not as a reading card.
+    expect(queue.find((item) => item.key === FIRST)?.kind).toBe("choice");
+    expect(queue.every((item) => item.kind !== "study")).toBe(true);
+  });
+
+  it("a unit session walks that unit in order", () => {
+    const queue = buildSession(registry, snapshot([]), NOW, { mode: "unit", unitKey: unitKey("nl-basis", "wonen") });
+    expect(queue).toHaveLength(8);
+    expect(queue[0].item.text).toBe("Ik huur een klein appartement.");
+    expect(queue.every((item) => item.unit.id === "wonen")).toBe(true);
+  });
+
+  it("mistakes contains what you got wrong or forgot", () => {
+    const miss: Attempt = {
+      id: "m",
+      itemId: SECOND,
+      kind: "cloze",
+      at: NOW - DAY_MS,
+      grade: 1,
+      correct: false,
+      ms: 900,
+      typed: "verkeerd",
     };
+    const queue = buildSession(registry, snapshot([card(FIRST), card(SECOND)], [miss]), NOW, { mode: "mistakes" }, deterministic);
+    expect(queue).toHaveLength(1);
+    expect(queue[0].key).toBe(SECOND);
+  });
+});
 
-    const updated = applyAnswer(item, { correct: true, almost: false }, NOW);
+describe("applyAnswer", () => {
+  const item = (overrides: Partial<SessionItem> = {}): SessionItem => ({
+    key: FIRST,
+    item: registry.items.get(FIRST)!.item,
+    unit: registry.items.get(FIRST)!.unit,
+    module: registry.items.get(FIRST)!.module,
+    card: card(FIRST),
+    kind: "cloze",
+    isNew: false,
+    ttsLocale: "nl-NL",
+    ...overrides,
+  });
+
+  it("introduces a new sentence and moves it to the first drill", () => {
+    const updated = applyAnswer(item({ isNew: true, card: card(FIRST, { stage: 0 }) }), { correct: true, almost: false }, NOW);
     expect(updated.stage).toBe(1);
     expect(updated.reps).toBe(1);
     expect(updated.due).toBeGreaterThan(NOW);
   });
 
   it("promotes on success and demotes on failure", () => {
-    const item: QueueItem = { sentence: SENTENCES[0], card: card(SENTENCES[0].id, { stage: 2 }), kind: "listen", isNew: false };
-
-    expect(applyAnswer(item, { correct: true, almost: false }, NOW).stage).toBe(3);
-    expect(applyAnswer(item, { correct: false, almost: false }, NOW).stage).toBe(1);
-    expect(applyAnswer(item, { correct: false, almost: false }, NOW).lapses).toBe(1);
+    expect(applyAnswer(item({ card: card(FIRST, { stage: 2 }) }), { correct: true, almost: false }, NOW).stage).toBe(3);
+    expect(applyAnswer(item({ card: card(FIRST, { stage: 2 }) }), { correct: false, almost: false }, NOW).stage).toBe(1);
+    expect(applyAnswer(item({ card: card(FIRST, { stage: 2 }) }), { correct: false, almost: false }, NOW).lapses).toBe(1);
   });
 
-  it("grades an almost-answer as hard rather than good", () => {
-    expect(gradeFor({ correct: true, almost: false })).toBe(3);
-    expect(gradeFor({ correct: true, almost: true })).toBe(2);
-    expect(gradeFor({ correct: false, almost: false })).toBe(1);
+  it("never promotes past the top of the ladder", () => {
+    expect(applyAnswer(item({ card: card(FIRST, { stage: 5 }) }), { correct: true, almost: false }, NOW).stage).toBe(5);
   });
 
-  it("never promotes past the last stage", () => {
-    const item: QueueItem = { sentence: SENTENCES[0], card: card(SENTENCES[0].id, { stage: 3 }), kind: "produce", isNew: false };
-    expect(applyAnswer(item, { correct: true, almost: false }, NOW).stage).toBe(3);
+  it("leaves the schedule alone in a quiz", () => {
+    const before = card(FIRST, { stage: 3 });
+    const after = applyAnswer(item({ card: before }), { correct: false, almost: false }, NOW, 0.9, { reschedule: false });
+    expect(after.due).toBe(before.due);
+    expect(after.stage).toBe(3);
+    expect(after.lapses).toBe(before.lapses);
   });
 });

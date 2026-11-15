@@ -1,59 +1,69 @@
 # Taal — Dutch on your phone, offline
 
-Sentences, not word lists. Every sentence comes back just before you would forget it, and each
-one climbs a ladder: read it → fill the missing word → hear it and type it → say it in Dutch.
-Audio is your phone's own Dutch voice, so it works with no network and no downloads.
+A sentence gets you further than a word list. Every sentence in Taal comes back just before
+you would forget it, and climbs six rungs: read it → fill the missing word → choose the
+meaning → build it from a word bank → hear it and type it → produce it in Dutch from English.
+Audio is offline, the schedule is local, and nothing stops you when the day's numbers run out.
 
-This is **M1**: the offline core. 97 exam-weighted A1/A2 sentences across the situations you meet
-in Delft — gemeente, wonen, huisarts, werk, boodschappen, vervoer, familie, tijd, KNM.
+**121 sentences, 15 units, 3 dialogues** — gemeente, wonen, huisarts, werk, boodschappen,
+vervoer, bellen, klachten, KNM. Exam-weighted on purpose.
 
 ## Install (the short way)
 
 1. On the phone, open **<https://github.com/knarayanareddy/appbuilder/releases/download/taal-latest/app-debug.apk>**
 2. Tap the downloaded file. If Android asks, allow "install unknown apps" for your browser once.
-3. Open **Taal** → **Start**.
+3. Open **Taal** → **Continue**.
 
-That's it. The app never asks for an account, an email, or a network connection.
+If the voice sounds like an English speaker reading Dutch, the Dutch voice data is not on
+the phone: **Settings → Voice → Install the voice** opens Android's own installer. That fixes
+it for every app, not just this one.
 
-## Daily use
+## What is in it
 
-- **Vandaag** shows what is due. Tap **Start** once a day; six new sentences are added, the rest
-  are reviews. Roughly 15–20 minutes.
-- Type the missing word or the whole sentence. A small typo counts as "almost" — the card is
-  marked hard, not failed, and you can override it with **I was right (typo)**.
-- **Progress** is honest: true recall on reviews only, sentences known (survived three weeks),
-  per-theme coverage, and the grammar tags you keep missing.
-- **Settings** holds the daily new-sentence count, the recall target, the voice speed, and
-  **Back up now** — one JSON file with every card's schedule. Use it before changing phones.
+| | |
+| --- | --- |
+| **Learn** | Today's plan, plus three unlimited modes: **Practise more** (keeps serving whatever is weakest), **Quiz me** (tests without touching the schedule) and **Mistakes**. Tap any unit to drill just that unit. |
+| **Six drill types** | reading with audio, gap-fill, multiple choice, word-bank sentence building, dictation, production from English. A failure drops a sentence one rung; success moves it up. |
+| **Words** | every sentence, searchable, with audio, literal gloss and grammar tags. |
+| **Progress** | true recall (reviews only), sentences known, per-unit coverage, day streak, and the grammar tags you keep missing. |
+| **Dialogen** | three short dialogues (gemeente, huisarts, markt) with line-by-line audio and English on demand — the Delftse-methode idea that context beats isolated sentences. |
+| **Modules** | the curriculum is data: paste a JSON module in Settings and it appears in Learn, in any of eight languages. See [docs/MODULE-FORMAT.md](docs/MODULE-FORMAT.md) and [docs/AUTHORING-PROMPT.md](docs/AUTHORING-PROMPT.md). |
+| **Backup** | one JSON file with schedules, history and imported modules — the only copy that survives a lost phone. |
 
-Audio silent? Install a Dutch text-to-speech voice in Android *Settings → System → Languages →
-Text-to-speech output*. The app uses whatever Dutch voice is on the phone.
+No account, no network, no XP. The statistics are the ones that predict whether you can
+follow a conversation, not the ones that predict whether you come back tomorrow.
 
-## What M1 deliberately does not do
+## Voice quality
 
-No speech recognition, no free conversation, no grammar explanations, no XP, no streaks-as-a-score.
-Those are M2–M4 in [DESIGN.md](DESIGN.md). The design doc also explains why: open speech
-recognition at 22–26% word error cannot grade you, and XP measures tapping, not knowing.
+- Bundled recordings win when a sentence has one (`public/audio/`, see [docs/AUDIO.md](docs/AUDIO.md))
+  — a real Dutch voice, identical on every phone.
+- Otherwise the phone's own engine speaks, but only after Taal checks the Dutch voice
+  exists: without it, Android would read Dutch with an English voice and butcher it. When
+  it is missing the app says so and offers the installer instead of playing the wrong voice.
+- Pick the voice and the speed in **Settings → Voice**.
 
 ## Working on it
 
 ```bash
 npm install
 npm run dev        # http://localhost:5182 — the web build is the same app
-npm run check      # typecheck + 49 tests
+npm run check      # typecheck + 69 tests
 npm run build      # static build into dist/
+node scripts/audio-index.mjs   # re-index bundled recordings
 ```
 
 | Path | What lives there |
 | --- | --- |
-| `src/lib/fsrs.ts` | FSRS scheduler (published default weights, target-recall intervals) |
-| `src/lib/session.ts` | Queue building, stage ladder, grading |
-| `src/lib/content.ts` | The sentence corpus — plain rows, no database |
+| `src/lib/fsrs.ts` | FSRS scheduler (published weights, target-recall intervals) |
+| `src/lib/session.ts` | The six-rung ladder, the queue builder for every mode |
+| `src/lib/module.ts` | Module validation, registry, legacy-id migration |
+| `src/content/nl-basis.ts` | The built-in Dutch module — plain rows, no database |
 | `src/lib/repo.ts` | IndexedDB persistence, repair of old records, backup/restore |
-| `src/components/SessionView.tsx` | The four drill types |
+| `src/components/SessionView.tsx` | The six drill types |
+| `docs/` | Module format, AI authoring prompt, audio pipeline |
 | `DESIGN.md` | The full design: evidence, curriculum, traps, milestones |
 
-The APK is built by `.github/workflows/taal.yml` on every push. It publishes the same release tag
-each time, so the install link above never changes. Signing is pinned in
-[keystore/README.md](keystore/README.md) — that is what lets a new APK install over the old one
-without wiping your progress.
+The APK is built by `.github/workflows/taal.yml` on every push and published to the same
+release tag, so the install link never changes. Signing is pinned in
+[keystore/README.md](keystore/README.md) — that is what lets a new APK install over the old
+one without wiping your progress.

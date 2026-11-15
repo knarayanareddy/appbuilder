@@ -1,31 +1,73 @@
-export type Level = "A1" | "A2";
-export type Skill = "lezen" | "luisteren" | "schrijven" | "spreken" | "knm";
+export type Level = "A1" | "A2" | "B1";
+export type Skill = "lezen" | "luisteren" | "spreken" | "schrijven" | "knm";
 
-export interface Sentence {
+/** One sentence or phrase, bilingual. `literal` is a word-for-word gloss on purpose. */
+export interface Item {
   id: string;
-  /** The Dutch sentence as it is shown and spoken. */
-  nl: string;
-  /** Natural English. */
-  en: string;
-  /** Word-for-word English, so the Dutch order is visible even when it looks wrong. */
-  lit: string;
-  level: Level;
-  theme: string;
+  text: string;
+  translation: string;
+  literal?: string;
   tags: string[];
-  skills: Skill[];
+  tip?: string;
 }
 
-/** Which drill a card has reached. 0 is presentation, 3 is full production. */
-export type Stage = 0 | 1 | 2 | 3;
-export type CardKind = "study" | "cloze" | "listen" | "produce";
+export interface Unit {
+  id: string;
+  title: string;
+  blurb: string;
+  level: Level;
+  /** Grammar note shown at the top of the unit and on its first cards. */
+  tip?: string;
+  items: Item[];
+}
 
-/** One row per sentence: the scheduling state. */
+export interface StoryLine {
+  speaker: string;
+  text: string;
+  translation: string;
+}
+
+/** A short dialogue: read it, hear it, reveal the English when you need it. */
+export interface Story {
+  id: string;
+  title: string;
+  situation: string;
+  lines: StoryLine[];
+}
+
+/**
+ * A module is the unit of content exchange. It is deliberately plain JSON so a
+ * person (or another model) can write one and drop it in — see docs/MODULE-FORMAT.md.
+ */
+export interface Module {
+  schemaVersion: 1;
+  id: string;
+  language: string;
+  title: string;
+  description: string;
+  author?: string;
+  units: Unit[];
+  stories?: Story[];
+}
+
+export interface Language {
+  code: string;
+  name: string;
+  nativeName: string;
+  ttsLocale: string;
+  flag: string;
+}
+
+export type CardKind = "study" | "cloze" | "choice" | "bank" | "listen" | "produce";
+
+export type SessionMode = "daily" | "practice" | "quiz" | "unit" | "mistakes";
+
 export interface CardState {
-  sentenceId: string;
+  itemId: string;
+  /** 0 read · 1 fill the gap · 2 choose · 3 word bank · 4 dictation · 5 produce */
   stage: number;
   stability: number;
   difficulty: number;
-  /** Epoch milliseconds. */
   due: number;
   reps: number;
   lapses: number;
@@ -34,33 +76,57 @@ export interface CardState {
 
 export interface Attempt {
   id: string;
-  sentenceId: string;
+  itemId: string;
   kind: CardKind;
   at: number;
-  /** 1 again, 2 hard, 3 good, 4 easy — the FSRS grade that was applied. */
   grade: number;
   correct: boolean;
   ms: number;
   typed: string;
+  mode?: SessionMode;
 }
 
 export interface Settings {
-  /** New sentences introduced per day. */
+  /** How many new sentences the daily session introduces. Practice is never capped. */
   dailyNew: number;
-  /** Target recall probability when a card comes back. FSRS default 0.9. */
   desiredRetention: number;
-  /** Speech rate for the Dutch voice, 0.6–1.2. */
   rate: number;
+  /** voiceURI chosen by the learner; null means "pick the best Dutch voice". */
+  voice: string | null;
+  autoPlay: boolean;
+  /** Language being learned, so a second module in another language still works. */
+  language: string;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  dailyNew: 10,
+  desiredRetention: 0.9,
+  rate: 0.9,
+  voice: null,
+  autoPlay: true,
+  language: "nl",
+};
+
+/** Items whose translation looks wrong, kept on the device so they can be exported. */
+export interface Report {
+  itemId: string;
+  note: string;
+  at: number;
 }
 
 export interface Snapshot {
   cards: CardState[];
   settings: Settings;
   attempts: Attempt[];
+  /** Modules imported by the learner; built-in ones are code, not data. */
+  modules: Module[];
+  reports: Report[];
 }
 
-export const DEFAULT_SETTINGS: Settings = {
-  dailyNew: 6,
-  desiredRetention: 0.9,
-  rate: 0.9,
+export const EMPTY_SNAPSHOT: Snapshot = {
+  cards: [],
+  settings: DEFAULT_SETTINGS,
+  attempts: [],
+  modules: [],
+  reports: [],
 };

@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { clozeIndex, clozeParts, feedback, judge, levenshtein, maskWord, normalise } from "./text";
+import {
+  buildBank,
+  clozeIndex,
+  clozeParts,
+  feedback,
+  judge,
+  levenshtein,
+  maskWord,
+  normalise,
+  pickOptions,
+  sameSequence,
+} from "./text";
 
 describe("text", () => {
   it("normalises case, punctuation and spacing", () => {
@@ -51,5 +62,33 @@ describe("text", () => {
   it("masks a word by length without revealing it", () => {
     expect(maskWord("station")).toBe("s······");
     expect(maskWord("de")).toBe("d·");
+  });
+});
+
+describe("word bank and options", () => {
+  it("puts the sentence's words in the bank, plus decoys", () => {
+    const bank = buildBank("Ik heet Anna.", ["wagen", "de", "stations"], () => 0.5);
+    expect(bank).toContain("Ik");
+    expect(bank).toContain("heet");
+    expect(bank).toContain("Anna.");
+    expect(bank.length).toBeGreaterThan(3);
+  });
+
+  it("does not add a decoy that is already in the sentence", () => {
+    const bank = buildBank("De fiets staat hier.", ["fiets", "fiets"], () => 0.1);
+    expect(bank.filter((word) => word === "fiets")).toHaveLength(1);
+  });
+
+  it("checks a built sentence word by word, ignoring punctuation", () => {
+    expect(sameSequence(["ik", "heet", "anna"], ["Ik", "heet", "Anna."])).toBe(true);
+    expect(sameSequence(["heet", "ik", "anna"], ["Ik", "heet", "Anna."])).toBe(false);
+    expect(sameSequence(["ik", "heet"], ["Ik", "heet", "Anna."])).toBe(false);
+  });
+
+  it("builds four options with exactly one right answer", () => {
+    const options = pickOptions("How are you?", ["Where is it?", "How are you?", "Thank you."], 4);
+    expect(options).toHaveLength(3);
+    expect(new Set(options.map(normalise)).size).toBe(3);
+    expect(options.map(normalise)).toContain("how are you");
   });
 });

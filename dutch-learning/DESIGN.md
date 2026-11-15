@@ -317,3 +317,28 @@ Still open, and deliberately so: the **exam date** (it sets whether M2's exam mo
 or after M3's input) and **which exam** — inburgering (A1 buitenland / B1 route) versus
 Staatsexamen NT2 Programma I (≈B1). Programme I is the harder, more useful target; the drills
 are the same shape either way, only the pass bar moves.
+
+---
+
+## 16. What has shipped
+
+**M1 — offline core.** FSRS scheduler, 121 exam-weighted sentences, six drill types, daily
+session, honest stats, IndexedDB persistence with record repair, backup/restore, pinned APK
+signing and a CI-released install link.
+
+**M2 — the app becomes programmable and varied.** Two changes matter more than the count:
+
+- **Content is a module, not code.** `schemaVersion 1` JSON with units, items, literal
+  glosses, grammar tags and dialogues. Validated on import, exports back out, migratable
+  across languages. A model can write one from `docs/AUTHORING-PROMPT.md`, and the app
+  treats it exactly like the built-in Dutch — because the built-in Dutch *is* one.
+- **No ceiling.** The daily pace paces only the daily session. Practise, Quiz and unit
+  drills are unlimited by construction; a quiz records answers without corrupting the
+  schedule; mistakes get their own queue. A learning app that says "come back tomorrow"
+  is optimising for retention of the app, not the language.
+
+The ladder also gained the drills that make short sessions productive: multiple choice,
+word-bank sentence building, and a per-unit path with per-unit progress.
+
+Still open by design: speech recognition (M4) stays behind the offline core, and the exam
+module (inburgering task formats + KNM questions) is the next content milestone.

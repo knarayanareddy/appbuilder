@@ -50,3 +50,47 @@ export function Bar({ value, max }: { value: number; max: number }) {
     </div>
   );
 }
+
+export function Speaker({ onClick, label = "Play audio" }: { onClick: () => void; label?: string }) {
+  return (
+    <button type="button" className="speaker" aria-label={label} onClick={onClick}>
+      🔊
+    </button>
+  );
+}
+
+/** A tappable word in the word-bank drill. */
+export function Chip({ children, onClick, muted = false }: { children: ReactNode; onClick: () => void; muted?: boolean }) {
+  return (
+    <button type="button" className={muted ? "chip muted" : "chip"} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+export function Option({
+  children,
+  onClick,
+  state = "idle",
+  disabled = false,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  state?: "idle" | "right" | "wrong";
+  disabled?: boolean;
+}) {
+  return (
+    <button type="button" className={`option ${state}`} onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  );
+}
+
+export function Empty({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <Card>
+      <p className="nl small">{title}</p>
+      {children ? <p className="small muted" style={{ marginTop: 6 }}>{children}</p> : null}
+    </Card>
+  );
+}

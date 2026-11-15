@@ -1,14 +1,11 @@
 import { useMemo } from "react";
 import type { Snapshot } from "@/types";
-import { CONTENT_STATS } from "@/lib/content";
-import { computeStats, hardestTags, retention, streakDays } from "@/lib/stats";
+import type { Registry } from "@/lib/module";
+import { computeStats } from "@/lib/stats";
 import { Bar, Card, Stat, Tag } from "./ui";
 
-export function StatsView({ snapshot, now }: { snapshot: Snapshot; now: number }) {
-  const stats = useMemo(() => computeStats(snapshot, now), [snapshot, now]);
-  const misses = useMemo(() => hardestTags(snapshot.attempts, now), [snapshot.attempts, now]);
-  const recall = retention(snapshot.attempts, now);
-  const streak = streakDays(snapshot.attempts, now);
+export function ProgressView({ registry, snapshot, now }: { registry: Registry; snapshot: Snapshot; now: number }) {
+  const stats = useMemo(() => computeStats(registry, snapshot, now), [registry, snapshot, now]);
 
   return (
     <div className="screen">
@@ -17,13 +14,13 @@ export function StatsView({ snapshot, now }: { snapshot: Snapshot; now: number }
       <Card>
         <h2>This week</h2>
         <div className="grid-3">
-          <Stat value={recall === null ? "—" : `${Math.round(recall * 100)}%`} label="recall" />
+          <Stat value={stats.retention === null ? "—" : `${Math.round(stats.retention * 100)}%`} label="recall" />
           <Stat value={stats.reviewsLast7} label="reviews" />
-          <Stat value={streak} label="day streak" />
+          <Stat value={stats.streak} label="day streak" />
         </div>
         <p className="tiny muted" style={{ marginTop: 10 }}>
-          Recall is measured on reviews only, not on first presentations — a card you have just been shown cannot be
-          failed. Aim for 85% or better; below that, the daily load is too high.
+          Recall counts reviews only — a card you have just been shown cannot be failed. Aim for 85% or better; below
+          that, the daily pace is too high.
         </p>
       </Card>
 
@@ -32,18 +29,18 @@ export function StatsView({ snapshot, now }: { snapshot: Snapshot; now: number }
         <div className="grid-3">
           <Stat value={stats.known} label="known" />
           <Stat value={stats.learning} label="learning" />
-          <Stat value={stats.untouched} label="not yet seen" />
+          <Stat value={stats.untouched} label="not seen" />
         </div>
         <div className="stack" style={{ marginTop: 12 }}>
-          {stats.byTheme.map((theme) => (
-            <div key={theme.theme}>
+          {stats.units.map((unit) => (
+            <div key={unit.key}>
               <div className="row spread small">
-                <span style={{ textTransform: "capitalize" }}>{theme.theme}</span>
+                <span>{unit.title}</span>
                 <span className="muted">
-                  {theme.known}/{theme.total}
+                  {unit.known}/{unit.total}
                 </span>
               </div>
-              <Bar value={theme.known} max={theme.total} />
+              <Bar value={unit.known} max={unit.total} />
             </div>
           ))}
         </div>
@@ -51,11 +48,11 @@ export function StatsView({ snapshot, now }: { snapshot: Snapshot; now: number }
 
       <Card>
         <h2>Where you slip</h2>
-        {misses.length === 0 ? (
+        {stats.hardestTags.length === 0 ? (
           <p className="small muted">No pattern yet. Miss a few cards and the grammar tags that hurt will appear here.</p>
         ) : (
           <div className="chips">
-            {misses.map((entry) => (
+            {stats.hardestTags.map((entry) => (
               <Tag key={entry.tag}>
                 {entry.tag} · {entry.misses}
               </Tag>
@@ -63,7 +60,7 @@ export function StatsView({ snapshot, now }: { snapshot: Snapshot; now: number }
           </div>
         )}
         <p className="tiny muted" style={{ marginTop: 10 }}>
-          This is the app's curriculum bending: keep missing separables and the sentence mix should move towards them.
+          Watch this list bend the sentence mix: whatever keeps appearing here is what the next sessions should hit.
         </p>
       </Card>
 
@@ -71,7 +68,8 @@ export function StatsView({ snapshot, now }: { snapshot: Snapshot; now: number }
         <div className="row spread small">
           <span className="muted">Library</span>
           <span>
-            {CONTENT_STATS.total} sentences · {CONTENT_STATS.a1} A1 · {CONTENT_STATS.a2} A2
+            {registry.items.size} sentences · {registry.units.length} units · {registry.modules.length} module
+            {registry.modules.length === 1 ? "" : "s"}
           </span>
         </div>
       </Card>

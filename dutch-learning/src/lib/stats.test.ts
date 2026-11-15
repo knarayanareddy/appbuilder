@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Attempt, type CardState, type Snapshot } from "@/types";
-import { SENTENCES } from "./content";
+import { buildRegistry, itemKey, unitKey } from "./module";
 import { DAY_MS } from "./fsrs";
 import { computeStats, hardestTags, retention, streakDays } from "./stats";
 
 const NOW = 1_700_006_400_000;
+const registry = buildRegistry([]);
+const KEY = itemKey("nl-basis", "kennismaking", "s001");
+const SEPARABLE = itemKey("nl-basis", "gemeente", "s029");
 
 function attempt(overrides: Partial<Attempt> = {}): Attempt {
   return {
     id: Math.random().toString(36).slice(2),
-    sentenceId: SENTENCES[0].id,
+    itemId: KEY,
     kind: "cloze",
     at: NOW - 1000,
     grade: 3,
@@ -22,8 +25,8 @@ function attempt(overrides: Partial<Attempt> = {}): Attempt {
 
 function card(overrides: Partial<CardState> = {}): CardState {
   return {
-    sentenceId: SENTENCES[0].id,
-    stage: 3,
+    itemId: KEY,
+    stage: 5,
     stability: 30,
     difficulty: 4,
     due: NOW,
@@ -35,12 +38,12 @@ function card(overrides: Partial<CardState> = {}): CardState {
 }
 
 function snapshot(cards: CardState[], attempts: Attempt[]): Snapshot {
-  return { cards, attempts, settings: DEFAULT_SETTINGS };
+  return { cards, attempts, settings: DEFAULT_SETTINGS, modules: [], reports: [] };
 }
 
 describe("stats", () => {
   it("ignores first presentations when measuring recall", () => {
-    const attempts = [attempt({ kind: "study", correct: true }), attempt({ correct: false }), attempt({ correct: true })];
+    const attempts = [attempt({ kind: "study" }), attempt({ correct: false }), attempt({ correct: true })];
     expect(retention(attempts, NOW)).toBe(0.5);
   });
 
@@ -63,17 +66,16 @@ describe("stats", () => {
   });
 
   it("surfaces the tags that keep costing marks", () => {
-    const separable = SENTENCES.find((sentence) => sentence.tags.includes("separable"))!;
-    const tags = hardestTags([attempt({ sentenceId: separable.id, correct: false })], NOW);
+    const tags = hardestTags([attempt({ itemId: SEPARABLE, correct: false })], registry, NOW);
     expect(tags.map((entry) => entry.tag)).toContain("separable");
-    expect(tags.length).toBeGreaterThan(0);
   });
 
-  it("summarises the library", () => {
-    const stats = computeStats(snapshot([card()], [attempt()]), NOW);
+  it("summarises the whole library", () => {
+    const stats = computeStats(registry, snapshot([card()], [attempt()]), NOW);
     expect(stats.known).toBe(1);
     expect(stats.learning).toBe(0);
-    expect(stats.untouched).toBe(SENTENCES.length - 1);
-    expect(stats.byTheme.length).toBeGreaterThan(5);
+    expect(stats.total).toBe(registry.items.size);
+    expect(stats.units.length).toBe(registry.units.length);
+    expect(stats.units.find((unit) => unit.key === unitKey("nl-basis", "kennismaking"))?.known).toBe(1);
   });
 });

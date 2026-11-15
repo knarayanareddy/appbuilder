@@ -1,7 +1,16 @@
 import type { Attempt, Snapshot } from "@/types";
-import { SENTENCES, THEMES } from "./content";
 import { DAY_MS, isKnown } from "./fsrs";
+import type { Registry } from "./module";
 import { attemptsToday, dueCount, newAvailable, startOfDay } from "./session";
+
+export interface UnitProgress {
+  key: string;
+  title: string;
+  module: string;
+  known: number;
+  started: number;
+  total: number;
+}
 
 export interface Stats {
   due: number;
@@ -9,11 +18,12 @@ export interface Stats {
   known: number;
   learning: number;
   untouched: number;
+  total: number;
   retention: number | null;
   reviewsLast7: number;
   attemptsToday: number;
   streak: number;
-  byTheme: Array<{ theme: string; known: number; total: number }>;
+  units: UnitProgress[];
   hardestTags: Array<{ tag: string; misses: number }>;
 }
 
@@ -44,14 +54,18 @@ export function streakDays(attempts: Attempt[], now: number): number {
  * Most-missed grammar tags. This is the curriculum bending: if "separables" keeps
  * appearing here, the sentence mix should change.
  */
-export function hardestTags(attempts: Attempt[], now: number, limit = 4): Array<{ tag: string; misses: number }> {
+export function hardestTags(
+  attempts: Attempt[],
+  registry: Registry,
+  now: number,
+  limit = 5,
+): Array<{ tag: string; misses: number }> {
   const misses = new Map<string, number>();
-  const sentencesById = new Map(SENTENCES.map((sentence) => [sentence.id, sentence]));
   for (const attempt of attempts) {
     if (attempt.correct || attempt.at < now - 30 * DAY_MS) continue;
-    const sentence = sentencesById.get(attempt.sentenceId);
-    if (!sentence) continue;
-    for (const tag of sentence.tags) {
+    const ref = registry.items.get(attempt.itemId);
+    if (!ref) continue;
+    for (const tag of ref.item.tags) {
       misses.set(tag, (misses.get(tag) ?? 0) + 1);
     }
   }
@@ -61,28 +75,30 @@ export function hardestTags(attempts: Attempt[], now: number, limit = 4): Array<
     .slice(0, limit);
 }
 
-export function computeStats(snapshot: Snapshot, now: number): Stats {
+export function computeStats(registry: Registry, snapshot: Snapshot, now: number): Stats {
   const knownCards = snapshot.cards.filter(isKnown);
-  const knownIds = new Set(knownCards.map((card) => card.sentenceId));
+  const knownIds = new Set(knownCards.map((card) => card.itemId));
+  const startedIds = new Set(snapshot.cards.map((card) => card.itemId));
 
   return {
     due: dueCount(snapshot, now),
-    newAvailable: newAvailable(snapshot, now),
+    newAvailable: newAvailable(registry, snapshot, now),
     known: knownCards.length,
     learning: snapshot.cards.length - knownCards.length,
-    untouched: SENTENCES.length - snapshot.cards.length,
+    untouched: registry.items.size - snapshot.cards.length,
+    total: registry.items.size,
     retention: retention(snapshot.attempts, now),
     reviewsLast7: snapshot.attempts.filter((attempt) => attempt.at >= now - WEEK_MS && attempt.kind !== "study").length,
     attemptsToday: attemptsToday(snapshot.attempts, now),
     streak: streakDays(snapshot.attempts, now),
-    byTheme: THEMES.map((theme) => {
-      const inTheme = SENTENCES.filter((sentence) => sentence.theme === theme);
-      return {
-        theme,
-        total: inTheme.length,
-        known: inTheme.filter((sentence) => knownIds.has(sentence.id)).length,
-      };
-    }),
-    hardestTags: hardestTags(snapshot.attempts, now),
+    units: registry.units.map((entry) => ({
+      key: entry.key,
+      title: entry.unit.title,
+      module: entry.module.title,
+      total: entry.items.length,
+      known: entry.items.filter((ref) => knownIds.has(ref.key)).length,
+      started: entry.items.filter((ref) => startedIds.has(ref.key)).length,
+    })),
+    hardestTags: hardestTags(snapshot.attempts, registry, now),
   };
 }

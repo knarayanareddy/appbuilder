@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test",
     "cap:add": "npm run build && cap add android",
-    "cap:sync": "npm run build && cap sync android"
+    "cap:sync": "npm run build && cap sync android",
+    "audio:index": "node scripts/audio-index.mjs"
   },
   "dependencies": {
     "@capacitor-community/text-to-speech": "8.0.2",
