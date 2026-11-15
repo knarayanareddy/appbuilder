@@ -47,7 +47,7 @@ follow a conversation, not the ones that predict whether you come back tomorrow.
 ```bash
 npm install
 npm run dev        # http://localhost:5182 — the web build is the same app
-npm run check      # typecheck + 69 tests
+npm run check      # typecheck + 73 tests
 npm run build      # static build into dist/
 node scripts/audio-index.mjs   # re-index bundled recordings
 ```

@@ -55,8 +55,16 @@ export function hasBundledAudio(key: string): boolean {
   return bundled.has(key);
 }
 
+/**
+ * `module/unit/item` → `module__unit__item.mp3`. Double underscore is the separator
+ * because a single `_` already appears in ids like `nl_basis`.
+ */
+export function audioFile(key: string): string {
+  return key.split("/").join("__");
+}
+
 export function audioUrl(key: string): string {
-  return `audio/${key.replace(/[^a-zA-Z0-9._-]+/g, "_")}.mp3`;
+  return `audio/${audioFile(key)}.mp3`;
 }
 
 export function stopAudio(): void {

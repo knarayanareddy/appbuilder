@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { NL_BASIS } from "@/content/nl-basis";
 import { buildRegistry, countItems, itemKey, resolveKey, validateModule } from "./module";
@@ -113,5 +115,15 @@ describe("registry", () => {
     const registry = buildRegistry([impostor]);
     expect(registry.modules).toHaveLength(1);
     expect(registry.modules[0].title).toBe(NL_BASIS.title);
+  });
+});
+
+describe("bundled audio", () => {
+  it("maps every recording in the index to a real sentence", () => {
+    const index: string[] = JSON.parse(readFileSync(join(process.cwd(), "public/audio/index.json"), "utf8"));
+    const registry = buildRegistry([]);
+    for (const key of index) {
+      expect(registry.items.has(key)).toBe(true);
+    }
   });
 });

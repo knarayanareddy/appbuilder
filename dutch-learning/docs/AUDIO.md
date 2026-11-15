@@ -10,18 +10,21 @@ The app speaks in two ways, and it prefers the one that cannot be mispronounced.
 
 ## How a recording is found
 
-The key of an item is `module/unit/item`, so the file name is that with `/` replaced:
+The key of an item is `module/unit/item`, and the file name is that key with `/`
+replaced by a double underscore (ids never contain `__`):
 
 | Item | File |
 | --- | --- |
-| `nl-basis/kennismaking/s001` | `public/audio/nl-basis_kennismaking_s001.mp3` |
+| `nl-basis/kennismaking/s001` | `public/audio/nl-basis__kennismaking__s001.mp3` |
 
 `public/audio/index.json` lists which keys exist. Without it (or with `[]`) the app uses
 text-to-speech only — silence is never an error:
 
 ```json
-["nl-basis_kennismaking_s001", "nl-basis_kennismaking_s002"]
+["nl-basis/kennismaking/s001", "nl-basis/kennismaking/s002"]
 ```
+
+(`scripts/audio-index.mjs` writes this file from the folder — do not hand-edit it.)
 
 Recording quality rules:
 
@@ -39,9 +42,14 @@ node scripts/audio-index.mjs          # writes public/audio/index.json from the 
 npm run build                         # pick up new files
 ```
 
-## How the current recordings were made
+## What is recorded today
 
-The M2 batch was generated with a native Dutch neural voice, one clip per sentence, and
-checked by ear for the traps this app teaches: the *ui/ou* pair, final *-en* as a
-schwa, *de/het* before a vowel, and the *sch-* at the start of a word. Where a sentence
-exists mainly to teach a trap, it is worth listening to that one file specifically.
+Unit 1 (*Kennismaking*, ten sentences) is recorded with a native Dutch neural voice —
+the one you picked from the two auditions — one clip per sentence. Those ten cards now
+sound identical on every phone, with no dependence on the device's speech engine.
+
+Every other sentence falls back to the phone's own Dutch voice, which is good when the
+voice data is installed and wrong when it is not (the app checks, and says so). The rest
+of the course can be recorded in batches: ten clips per pass, `npm run audio:index`,
+rebuild, ship. Say which unit and it happens.
+

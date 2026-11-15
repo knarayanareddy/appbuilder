@@ -8,7 +8,7 @@ const folder = join(process.cwd(), "public", "audio");
 const files = await readdir(folder).catch(() => []);
 const keys = files
   .filter((name) => name.endsWith(".mp3") || name.endsWith(".m4a") || name.endsWith(".aac"))
-  .map((name) => name.replace(/\.(mp3|m4a|aac)$/, ""))
+  .map((name) => name.replace(/\.(mp3|m4a|aac)$/, "").split("__").join("/"))
   .sort();
 
 await writeFile(join(folder, "index.json"), `${JSON.stringify(keys, null, 2)}\n`, "utf8");
