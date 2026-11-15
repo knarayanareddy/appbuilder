@@ -1243,3 +1243,28 @@ input[type="range"]::-moz-range-thumb {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* — on a laptop the app reads as a phone, not as a broken desktop page ———— */
+
+@media (min-width: 700px) {
+  .app {
+    background: linear-gradient(180deg, rgba(18, 22, 36, 0.85), rgba(8, 10, 18, 0.9));
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    box-shadow: 0 0 120px -30px rgba(0, 0, 0, 0.95);
+  }
+}
+
+@media (min-width: 900px) {
+  body::after {
+    content: "Taal · built for a phone — the APK is the real thing";
+    position: fixed;
+    left: 26px;
+    bottom: 22px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--dim);
+    opacity: 0.75;
+  }
+}
