@@ -298,6 +298,28 @@ Tested: `device.test.ts` covers the Android/desktop/iPad decisions, `ItemsView.t
 covers both button layouts and that a picked file becomes a pending photo either way, and the
 end-to-end photo test now runs as a phone.
 
+## 13. Getting the file to you, not just building it
+
+The APK exists after every green run, but "exists on GitHub" and "is on my phone" are two
+different problems, and one of them cannot be solved from a sandbox that may only reach a
+short list of hosts: GitHub serves artifacts from Azure blob storage, so the build output
+cannot be pulled into the agent's workspace, and a Drive connector can only upload a file it
+already has. No amount of retrying changes that; the file has to travel from the runner.
+
+Two routes, both from inside the build:
+
+- **A fixed download URL.** The workflow publishes `app-debug.apk` to the `bike-lot-latest`
+  release and replaces the asset on every build, so one URL always serves the newest APK.
+  Opening it on the phone is the whole install: download, tap, install.
+- **Drive, optionally.** `scripts/upload-to-drive.mjs` exchanges a refresh token for an
+  access token, looks for a file of the same name in the target folder, and either creates
+  it or replaces its media (so the file id, and any link to it, stays stable). It uses the
+  `drive` scope rather than `drive.file`, because the narrower scope cannot see a folder the
+  user created by hand. Without the secrets the step does nothing.
+
+Deliberately no service account: a personal Gmail account gives a service account zero
+storage quota, so uploads it owns fail. The token is the user's own.
+
 ### Deliberately not built
 
 Cloud sync, accounts, sharing, notifications, and encryption. Each one either contradicts

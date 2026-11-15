@@ -46,6 +46,12 @@ jobs:
     name: Debug APK
     needs: web
     runs-on: ubuntu-latest
+    # Publishing the install link needs to write a release; the GDRIVE_* values
+    # are read at job level so a step's own `if:` can test whether they exist.
+    permissions:
+      contents: write
+    env:
+      GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -113,6 +119,34 @@ jobs:
           grep -A4 "<queries>" android/app/src/main/AndroidManifest.xml
           ls -lh android/app/build/outputs/apk/debug/
           du -h android/app/build/outputs/apk/debug/app-debug.apk
+
+      # A stable link you can open on the phone: tap, download, install. The asset
+      # name never changes, so the URL stays the same from build to build.
+      # Skipped on pull requests, where the token is read-only.
+      - name: Publish the install link
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view bike-lot-latest > /dev/null 2>&1 || \
+            gh release create bike-lot-latest \
+              --title "Bike Lot - latest debug APK" \
+              --notes "Built from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Debug-signed, so sideload only."
+          gh release upload bike-lot-latest android/app/build/outputs/apk/debug/app-debug.apk --clobber
+
+      # Optional second delivery route: with the GDRIVE_* secrets set, every build
+      # also lands in a Drive folder (see README, "Put every build in Drive").
+      # Without them this stays silent and the build is unaffected.
+      - name: Check the Drive uploader
+        run: node scripts/upload-to-drive.mjs --check
+
+      - name: Copy the APK to Google Drive
+        if: env.GDRIVE_REFRESH_TOKEN != ''
+        env:
+          GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          GDRIVE_FOLDER_ID: ${{ vars.GDRIVE_FOLDER_ID }}
+        run: node scripts/upload-to-drive.mjs android/app/build/outputs/apk/debug/app-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:

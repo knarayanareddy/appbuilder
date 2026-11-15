@@ -111,7 +111,26 @@ npm run dev          # http://localhost:5180
 
 ## Get the APK onto the phone
 
-The APK is built by GitHub Actions, because it needs the Android SDK:
+The APK is built by GitHub Actions, because it needs the Android SDK. Each build is
+`app-debug.apk`, about **3.8 MB** (4,014,714 bytes at the time of writing).
+
+### Straight from the phone (one link, no computer)
+
+Every successful build is published to the same release, so this address never changes:
+
+```
+https://github.com/knarayanareddy/appbuilder/releases/download/bike-lot-latest/app-debug.apk
+```
+
+Open it on the phone → the browser downloads the APK → tap the notification → allow
+"install unknown apps" for that browser → install over the previous version. Your bikes,
+items and photos are untouched by an upgrade.
+
+The release is public (it is a debug build of an app whose source is already public, and it
+contains none of your data). If that ever matters, the artifact on the run page is private
+to the repository instead.
+
+### On a computer, from the run page
 
 1. Push a change under `bike-parking/` (or run the **Bike Lot** workflow manually from the
    Actions tab).
@@ -122,6 +141,39 @@ The APK is built by GitHub Actions, because it needs the Android SDK:
 It is a *debug* APK: signed with the standard debug key, so it installs fine by sideloading
 but is not suitable for the Play Store. If this app earns its place, the next step would be
 a release build with a real keystore.
+
+### Put every build in Drive (optional, one-time setup)
+
+GitHub serves build artifacts from storage that some environments cannot reach — the Arena
+sandbox is one of them, which is why the APK could not simply be handed to Drive after the
+fact. `scripts/upload-to-drive.mjs` fixes that from inside the build: if the credentials
+below exist, every build also copies `app-debug.apk` into a Drive folder, replacing the
+previous copy (Drive keeps the old versions). Without them the step is skipped silently and
+the build is unaffected.
+
+1. **Create the OAuth client.** In [Google Cloud console](https://console.cloud.google.com)
+   make a project, enable the **Google Drive API**, set the OAuth consent screen to
+   *External* and **publish it** ("In production" — in *Testing* mode Google expires
+   refresh tokens after 7 days, which would break the build weekly), then create an OAuth
+   client of type **Desktop app** and note the client id and secret. The unverified-app
+   warning is expected; it is your own project.
+2. **Get a refresh token.** Open the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground),
+   use the gear icon to tick *Use your own OAuth credentials* and paste the id/secret from
+   step 1, authorise the scope `https://www.googleapis.com/auth/drive`, then exchange the
+   code for tokens and copy the **refresh token**. (The narrower `drive.file` scope cannot
+   see a folder you created by hand, so the build could not upload into it.)
+3. **Pick the folder.** Create it in Drive and copy the id out of its URL:
+   `https://drive.google.com/drive/folders/`**`<this part is the id>`**.
+4. **Tell GitHub.** Repository → Settings → Secrets and variables → Actions:
+   - secrets `GDRIVE_CLIENT_ID`, `GDRIVE_CLIENT_SECRET`, `GDRIVE_REFRESH_TOKEN`
+   - variable `GDRIVE_FOLDER_ID`
+
+The next build prints a `https://drive.google.com/file/d/<id>/view` link in the log. Check
+the setup without building anything with:
+
+```
+node scripts/upload-to-drive.mjs --check
+```
 
 The `android/` folder is **not committed** — it is generated from `capacitor.config.ts` by
 `npx cap add android` on every build. That keeps a large, machine-specific, constantly
