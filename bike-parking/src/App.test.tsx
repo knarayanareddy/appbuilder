@@ -1,9 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import App from "./App";
 import { configureDb } from "@/lib/idb";
-import { loadSnapshot } from "@/lib/repo";
+import { allPhotoRecords, loadSnapshot } from "@/lib/repo";
 
 let counter = 0;
 
@@ -294,6 +294,39 @@ describe("App — other items", () => {
 
     await user.click(screen.getByRole("button", { name: "Items" }));
     expect(screen.getByText("Headphones")).toBeInTheDocument();
+  });
+
+  it("keeps a picture with an item, stored on the device", async () => {
+    const { user, view } = await startOnItems();
+
+    await user.click(screen.getByRole("button", { name: /Add the first item/i }));
+    await user.type(screen.getByLabelText(/Item name/i), "Headphones");
+    await user.type(screen.getByLabelText(/Where is it/i), "Desk drawer");
+
+    const file = new File(["fake jpeg bytes"], "headphones.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText(/Item photo camera input/i), { target: { files: [file] } });
+    await user.click(screen.getByRole("button", { name: /Save item/i }));
+
+    await waitFor(async () => {
+      const stored = await loadSnapshot();
+      expect(stored.items[0].photoIds).toHaveLength(1);
+    });
+
+    const photos = await allPhotoRecords();
+    expect(photos).toHaveLength(1);
+    expect(photos[0].kind).toBe("item");
+
+    view.unmount();
+    const reopened = userEvent.setup();
+    render(<App />);
+
+    // wait for the app to read its data back from the device
+    await screen.findByText(/1 item · on this phone/i);
+    await reopened.click(screen.getByRole("button", { name: "Items" }));
+    await reopened.click(await screen.findByRole("button", { name: /Edit Headphones/i }));
+
+    // The picture came back from the device with the item.
+    expect(await screen.findByRole("button", { name: /Remove photo/i })).toBeInTheDocument();
   });
 
   it("still has the items after a reload", async () => {

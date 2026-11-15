@@ -236,8 +236,15 @@ Kept it small and separate rather than bolting more fields onto `Bike`:
   so an existing inventory is carried over untouched; there is a test that builds a genuine
   version-1 database and asserts the bikes survive.
 - **Backups went to version 2** and still read version-1 files (which simply have no items).
-- **Skipped for now:** photos and status on items. Add photos if hunting for a specific
-  charger photo becomes a real need — the photo machinery already exists for bikes.
+- **Photos were added in a follow-up request.** Each item now holds up to six pictures
+  (`photoIds[]`), reusing the bike photo pipeline end to end: same downscaling, same
+  `photos` store (with `kind: "item"`), same backup encoding. Removing a picture in the form
+  deletes the stored bytes, and deleting an item takes its photos with it.
+- **Status is still not on items.** A charger has no "out riding" state.
+- **The photo work surfaced a real robustness hole:** image decoding had no deadline, so an
+  image that neither loaded nor errored (odd formats, a WebView giving up) would hang the
+  save silently forever. Decoding is now capped at 8 seconds with a fallback to storing the
+  original bytes.
 
 ### Deliberately not built
 

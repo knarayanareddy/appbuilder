@@ -36,9 +36,13 @@ export interface Item {
   place: string;
   tags: string[];
   notes: string;
+  /** Photos of the thing, its label, its charger… at most MAX_ITEM_PHOTOS. */
+  photoIds: ID[];
   createdAt: number;
   updatedAt: number;
 }
+
+export const MAX_ITEM_PHOTOS = 6;
 
 export interface LotKey {
   id: ID;
@@ -60,7 +64,7 @@ export interface Slot {
 
 export interface PhotoRecord {
   id: ID;
-  kind: "bike" | "slot";
+  kind: "bike" | "slot" | "item";
   /**
    * Raw JPEG bytes. Stored as an ArrayBuffer rather than a Blob because
    * structured-clone support for Blob varies between storage engines, while

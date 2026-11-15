@@ -18,7 +18,7 @@ import {
 } from "@/lib/model";
 import { requestPersistentStorage, saveBackupFile } from "@/lib/native";
 import * as repo from "@/lib/repo";
-import type { Bike, BikeStatus, ID, InventorySnapshot, Item, LotKey, ZoneSpec } from "@/types";
+import { MAX_ITEM_PHOTOS, type Bike, type BikeStatus, type ID, type InventorySnapshot, type Item, type LotKey, type ZoneSpec } from "@/types";
 
 export interface BikeDraft {
   id?: ID;
@@ -43,6 +43,10 @@ export interface ItemDraft {
   place: string;
   tags: string[];
   notes: string;
+  /** Photo ids that stay on the item, in order. */
+  photoIds: ID[];
+  /** Photos picked this session; appended after the kept ones. */
+  newPhotos?: Blob[];
 }
 
 export interface KeyDraft {
@@ -82,7 +86,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function storePhoto(blob: Blob, kind: "bike" | "slot"): Promise<ID> {
+async function storePhoto(blob: Blob, kind: "bike" | "slot" | "item"): Promise<ID> {
   const scaled = await downscaleImage(blob);
   const id = newId();
   await repo.savePhotoRecord({
@@ -230,12 +234,26 @@ export function useInventory() {
     (draft: ItemDraft) =>
       run(async () => {
         const existing = draft.id ? snapshotRef.current.items.find((i) => i.id === draft.id) : undefined;
+        const base = existing ?? makeItem();
+
+        // Photos removed in the form are deleted from storage, not just unlinked.
+        const kept = draft.photoIds.slice(0, MAX_ITEM_PHOTOS);
+        const dropped = base.photoIds.filter((id) => !kept.includes(id));
+        await Promise.all(dropped.map((id) => repo.removePhotoRecord(id)));
+
+        const added: ID[] = [];
+        for (const blob of draft.newPhotos ?? []) {
+          if (kept.length + added.length >= MAX_ITEM_PHOTOS) break;
+          added.push(await storePhoto(blob, "item"));
+        }
+
         const item: Item = {
-          ...(existing ?? makeItem()),
+          ...base,
           name: draft.name.trim(),
           place: draft.place.trim(),
           tags: normalizeTags(draft.tags),
           notes: draft.notes.trim(),
+          photoIds: [...kept, ...added],
           updatedAt: Date.now(),
         };
         await repo.saveItemRecord(item);
@@ -248,6 +266,8 @@ export function useInventory() {
   const deleteItem = useCallback(
     (itemId: ID) =>
       run(async () => {
+        const item = snapshotRef.current.items.find((i) => i.id === itemId);
+        if (item) await Promise.all(item.photoIds.map((id) => repo.removePhotoRecord(id)));
         await repo.removeItemRecord(itemId);
         setSnapshot((prev) => withoutItem(prev, itemId));
       }),

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, KeyRound, MapPin, Plus } from "lucide-react";
 import { Badge, Button, Chip, Field, Notice, Select, Sheet, TextArea, TextInput } from "./ui";
 import { PhotoPicker } from "./PhotoPicker";
 import { TagInput } from "./TagInput";
+import { useObjectUrl } from "@/hooks/useObjectUrl";
 import { allTags, freeSlots, keysForBike } from "@/lib/model";
 import type { BikeDraft } from "@/hooks/useInventory";
 import { BIKE_STATUSES, STATUS_LABEL, type Bike, type BikeStatus, type InventorySnapshot } from "@/types";
@@ -281,18 +282,4 @@ export function BikeForm({
       </div>
     </Sheet>
   );
-}
-
-function useObjectUrl(blob: Blob | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!blob) {
-      setUrl(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(blob);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [blob]);
-  return url;
 }

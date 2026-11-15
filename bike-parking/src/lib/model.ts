@@ -52,6 +52,7 @@ export function makeItem(partial: Partial<Item> = {}): Item {
     place: partial.place?.trim() ?? "",
     tags: partial.tags ?? [],
     notes: partial.notes ?? "",
+    photoIds: partial.photoIds ?? [],
     createdAt: partial.createdAt ?? now,
     updatedAt: partial.updatedAt ?? now,
   };

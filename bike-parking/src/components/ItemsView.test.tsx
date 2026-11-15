@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ItemsView } from "./ItemsView";
@@ -124,6 +124,66 @@ describe("ItemsView", () => {
 
     await user.click(within(sheet).getByRole("button", { name: /Confirm delete item/i }));
     expect(props.onDeleteItem).toHaveBeenCalledWith(snapshot.items[2].id);
+  });
+
+  it("shows the pictures an item already has, with a way to remove one", async () => {
+    const snapshot = itemsSnapshot();
+    snapshot.items[0] = { ...snapshot.items[0], photoIds: ["p1", "p2"] };
+    setup({ snapshot });
+
+    await screen.findByText("MacBook Pro 14");
+    expect(screen.getByText("2 photos")).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /Edit MacBook Pro 14/i }));
+    const sheet = screen.getByRole("dialog", { name: /Edit MacBook Pro 14/i });
+    expect(within(sheet).getAllByRole("button", { name: /Remove photo/i })).toHaveLength(2);
+  });
+
+  it("attaches a photo picked from the camera", async () => {
+    const user = userEvent.setup();
+    const props = setup({ snapshot: { ...wordsSnapshot(), items: [] } });
+
+    await user.click(screen.getByRole("button", { name: /Add the first item/i }));
+    await user.type(screen.getByLabelText(/Item name/i), "Headphones");
+
+    const file = new File(["fake bytes"], "headphones.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText(/Item photo camera input/i), { target: { files: [file] } });
+
+    await user.click(screen.getByRole("button", { name: /Save item/i }));
+
+    await waitFor(() => expect(props.onSaveItem).toHaveBeenCalled());
+    const draft = props.onSaveItem.mock.calls[0][0] as ItemDraft;
+    expect(draft.newPhotos).toHaveLength(1);
+    expect(draft.photoIds).toEqual([]);
+  });
+
+  it("drops a removed photo from the saved list", async () => {
+    const user = userEvent.setup();
+    const snapshot = itemsSnapshot();
+    snapshot.items[0] = { ...snapshot.items[0], photoIds: ["p1", "p2"] };
+    const props = setup({ snapshot });
+
+    await user.click(screen.getByRole("button", { name: /Edit MacBook Pro 14/i }));
+    const sheet = screen.getByRole("dialog", { name: /Edit MacBook Pro 14/i });
+
+    await user.click(within(sheet).getAllByRole("button", { name: /Remove photo/i })[0]);
+    await user.click(within(sheet).getByRole("button", { name: /Save changes/i }));
+
+    await waitFor(() => expect(props.onSaveItem).toHaveBeenCalled());
+    expect((props.onSaveItem.mock.calls[0][0] as ItemDraft).photoIds).toEqual(["p2"]);
+  });
+
+  it("says when the photo limit is reached", async () => {
+    const user = userEvent.setup();
+    const snapshot = itemsSnapshot();
+    snapshot.items[0] = { ...snapshot.items[0], photoIds: ["a", "b", "c", "d", "e", "f"] };
+    setup({ snapshot });
+
+    await user.click(screen.getByRole("button", { name: /Edit MacBook Pro 14/i }));
+    const sheet = screen.getByRole("dialog", { name: /Edit MacBook Pro 14/i });
+
+    expect(within(sheet).getByText(/maximum of 6 photos/i)).toBeInTheDocument();
   });
 
   it("invites the first item when there are none", () => {

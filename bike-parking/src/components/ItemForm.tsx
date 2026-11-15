@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Trash2 } from "lucide-react";
 import { Button, Field, Notice, Sheet, TextArea, TextInput } from "./ui";
 import { TagInput } from "./TagInput";
+import { PhotoStrip } from "./PhotoStrip";
 import { allItemTags } from "@/lib/model";
 import type { ItemDraft } from "@/hooks/useInventory";
 import type { InventorySnapshot, Item } from "@/types";
@@ -26,6 +27,8 @@ export function ItemForm({
   const [place, setPlace] = useState(item?.place ?? "");
   const [tags, setTags] = useState<string[]>(item?.tags ?? []);
   const [notes, setNotes] = useState(item?.notes ?? "");
+  const [photoIds, setPhotoIds] = useState<string[]>(item?.photoIds ?? []);
+  const [newPhotos, setNewPhotos] = useState<Blob[]>([]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -62,7 +65,7 @@ export function ItemForm({
             onClick={async () => {
               setSaving(true);
               try {
-                await onSave({ id: item?.id, name, place, tags, notes });
+                await onSave({ id: item?.id, name, place, tags, notes, photoIds, newPhotos });
                 onClose();
               } finally {
                 setSaving(false);
@@ -95,6 +98,16 @@ export function ItemForm({
             rows={3}
             placeholder={ITEM_PLACE_EXAMPLE}
             aria-label="Where is it"
+          />
+        </Field>
+
+        <Field label="Pictures" hint="Up to 6. The thing itself, its label, its charger, where it sits.">
+          <PhotoStrip
+            photoIds={photoIds}
+            newPhotos={newPhotos}
+            onPick={(blob) => setNewPhotos((prev) => [...prev, blob])}
+            onRemoveSaved={(photoId) => setPhotoIds((prev) => prev.filter((id) => id !== photoId))}
+            onRemoveNew={(index) => setNewPhotos((prev) => prev.filter((_, i) => i !== index))}
           />
         </Field>
 

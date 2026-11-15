@@ -6,10 +6,34 @@
 export const MAX_EDGE = 1280;
 export const JPEG_QUALITY = 0.75;
 
+/**
+ * Some decoders neither load nor error (odd formats, broken files, a WebView
+ * that simply gives up). Without a deadline the save would hang forever with no
+ * feedback, so every decode is raced against one and falls back to the original.
+ */
+const DECODE_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise<T | null>((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      }
+    );
+  });
+}
+
 async function loadBitmap(source: Blob): Promise<ImageBitmap | HTMLImageElement | null> {
   if (typeof createImageBitmap === "function") {
     try {
-      return await createImageBitmap(source);
+      const bitmap = await withTimeout(createImageBitmap(source), DECODE_TIMEOUT_MS);
+      if (bitmap) return bitmap;
     } catch {
       /* fall through to <img> */
     }
@@ -17,12 +41,16 @@ async function loadBitmap(source: Blob): Promise<ImageBitmap | HTMLImageElement 
   if (typeof document === "undefined") return null;
   const url = URL.createObjectURL(source);
   try {
-    return await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Could not read that image."));
-      img.src = url;
-    });
+    const loaded = await withTimeout(
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("Could not read that image."));
+        img.src = url;
+      }),
+      DECODE_TIMEOUT_MS
+    );
+    return loaded;
   } finally {
     // The decoded image keeps its own copy; safe to release the URL.
     setTimeout(() => URL.revokeObjectURL(url), 0);

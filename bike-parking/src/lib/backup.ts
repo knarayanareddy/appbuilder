@@ -7,7 +7,7 @@ export const BACKUP_VERSION = 2;
 
 export interface BackupPhoto {
   id: string;
-  kind: "bike" | "slot";
+  kind: "bike" | "slot" | "item";
   createdAt: number;
   dataUrl: string;
 }
@@ -189,6 +189,7 @@ export function decodeBackup(raw: unknown): DecodedBackup {
       place: asString(i.place),
       tags: asStringArray(i.tags).map((t) => t.trim()).filter(Boolean),
       notes: asString(i.notes),
+      photoIds: asStringArray(i.photoIds),
       createdAt: asNumber(i.createdAt, now),
       updatedAt: asNumber(i.updatedAt, now),
     }));
@@ -201,9 +202,10 @@ export function decodeBackup(raw: unknown): DecodedBackup {
     if (!id || !dataUrl) continue;
     try {
       const image = dataUrlToBytes(dataUrl);
+      const kindRaw = asString(entry.kind);
       photos.push({
         id,
-        kind: asString(entry.kind) === "slot" ? "slot" : "bike",
+        kind: kindRaw === "slot" ? "slot" : kindRaw === "item" ? "item" : "bike",
         createdAt: asNumber(entry.createdAt, now),
         data: image.data,
         mimeType: image.mimeType || "image/jpeg",
@@ -230,6 +232,9 @@ export function decodeBackup(raw: unknown): DecodedBackup {
   for (const bike of bikes) {
     if (bike.bikePhotoId && !photoIds.has(bike.bikePhotoId)) bike.bikePhotoId = null;
     if (bike.slotPhotoId && !photoIds.has(bike.slotPhotoId)) bike.slotPhotoId = null;
+  }
+  for (const item of items) {
+    item.photoIds = item.photoIds.filter((id) => photoIds.has(id));
   }
 
   return { snapshot: { bikes, items, keys, slots, settings }, photos };
