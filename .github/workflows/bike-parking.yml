@@ -1,0 +1,96 @@
+name: Bike Lot (web checks + Android APK)
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "bike-parking/**"
+      - ".github/workflows/bike-parking.yml"
+  pull_request:
+    paths:
+      - "bike-parking/**"
+      - ".github/workflows/bike-parking.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: bike-parking
+
+jobs:
+  web:
+    name: Type-check, lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: bike-parking/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+      - name: Keep the single-file web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: bike-lot-web
+          path: bike-parking/dist/index.html
+          if-no-files-found: error
+
+  android:
+    name: Debug APK
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: bike-parking/package-lock.json
+
+      # Capacitor 8 builds against a recent Android SDK and needs JDK 21.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+      - run: npm run build
+
+      # The native project is generated here rather than committed: it is a
+      # build artifact of `capacitor.config.ts` and rots if kept in the repo.
+      - name: Create the Android project
+        run: npx cap add android
+
+      - name: Sync the web build into it
+        run: npx cap sync android
+
+      - name: Accept SDK licences and fetch anything missing
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: Assemble debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Report the APK
+        run: |
+          ls -lh android/app/build/outputs/apk/debug/
+          du -h android/app/build/outputs/apk/debug/app-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bike-lot-apk
+          path: bike-parking/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 90
