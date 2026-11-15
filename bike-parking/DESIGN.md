@@ -317,6 +317,15 @@ Two routes, both from inside the build:
   `drive` scope rather than `drive.file`, because the narrower scope cannot see a folder the
   user created by hand. Without the secrets the step does nothing.
 
+The OAuth client is a **web application** client, which reads oddly for an Android project
+and needed writing down: the credential belongs to the build machine, not the phone. The APK
+never talks to Google, so an Android client would be a package-name-and-SHA-1 registration
+for something that makes no Google calls — and it would not work anyway, because Android
+clients have no client secret and a refresh token cannot be renewed server-side without one.
+(The CI debug keystore is regenerated per runner, so that fingerprint would also be a moving
+target.) A *desktop* client would fail differently: the OAuth Playground only accepts web
+application clients.
+
 Deliberately no service account: a personal Gmail account gives a service account zero
 storage quota, so uploads it owns fail. The token is the user's own.
 

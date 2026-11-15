@@ -153,17 +153,29 @@ below exist, every build also copies `app-debug.apk` into a Drive folder, replac
 previous copy (Drive keeps the old versions). Without them the step is skipped silently and
 the build is unaffected.
 
-1. **Create the OAuth client.** In [Google Cloud console](https://console.cloud.google.com)
-   make a project, enable the **Google Drive API**, set the OAuth consent screen to
-   *External* and **publish it** ("In production" — in *Testing* mode Google expires
-   refresh tokens after 7 days, which would break the build weekly), then create an OAuth
-   client of type **Desktop app** and note the client id and secret. The unverified-app
-   warning is expected; it is your own project.
+1. **Create the OAuth client — type Web application.** This credential belongs to the
+   *build machine*, not to the phone: the app never talks to Google (it is offline by
+   design), so there is nothing here to register a package name and SHA-1 fingerprint for.
+   An **Android** client is the wrong shape for three reasons: it has no client secret, a
+   refresh token cannot be renewed server-side without one, and its identity is bound to a
+   signing certificate — which changes with every CI runner, because each one generates a
+   fresh debug keystore. **Desktop app** is also wrong in this recipe, because it cannot be
+   used with the OAuth Playground in step 2 (Google's docs are explicit that a web
+   application client is the only type that works there).
+   In [Google Cloud console](https://console.cloud.google.com): create a project → enable the
+   **Google Drive API** → OAuth consent screen *External*, then **publish it** ("In
+   production" — in *Testing* mode Google expires refresh tokens after 7 days, which would
+   break the build weekly) → Credentials → *Create credentials* → *OAuth client ID* →
+   **Web application** → under *Authorised redirect URIs* add
+   `https://developers.google.com/oauthplayground` (and remove it afterwards if you like) →
+   note the client id and secret. The unverified-app warning is expected; it is your own
+   project.
 2. **Get a refresh token.** Open the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground),
    use the gear icon to tick *Use your own OAuth credentials* and paste the id/secret from
-   step 1, authorise the scope `https://www.googleapis.com/auth/drive`, then exchange the
-   code for tokens and copy the **refresh token**. (The narrower `drive.file` scope cannot
-   see a folder you created by hand, so the build could not upload into it.)
+   step 1, keep the flow on *Server-side*, authorise the scope
+   `https://www.googleapis.com/auth/drive`, then *Exchange authorization code for tokens* and
+   copy the **refresh token**. (The narrower `drive.file` scope cannot see a folder you
+   created by hand, so the build could not upload into it.)
 3. **Pick the folder.** Create it in Drive and copy the id out of its URL:
    `https://drive.google.com/drive/folders/`**`<this part is the id>`**.
 4. **Tell GitHub.** Repository → Settings → Secrets and variables → Actions:
