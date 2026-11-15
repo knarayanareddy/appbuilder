@@ -114,6 +114,25 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
+      # Each CI runner generates its own debug keystore, so without this every
+      # build has a different key and the next APK refuses to install over the
+      # previous one - and uninstalling deletes the database. See keystore/README.md.
+      - name: Sign with the pinned key
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          TOOLS="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)"
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          "$TOOLS/zipalign" -p -f 4 "$APK" "$RUNNER_TEMP/aligned.apk"
+          "$TOOLS/apksigner" sign \
+            --ks keystore/bike-lot.p12 \
+            --ks-key-alias bikelot \
+            --ks-pass pass:bikelot-dev-key \
+            --key-pass pass:bikelot-dev-key \
+            --out "$RUNNER_TEMP/signed.apk" "$RUNNER_TEMP/aligned.apk"
+          cp "$RUNNER_TEMP/signed.apk" "$APK"
+          echo "signed; verifying:"
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK"
+
       - name: Report the APK
         run: |
           grep -A4 "<queries>" android/app/src/main/AndroidManifest.xml
@@ -128,42 +147,16 @@ jobs:
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          RAW="$RUNNER_TEMP/raw.txt"
-          OUT="$RUNNER_TEMP/cert.txt"
-          : > "$RAW"
-
-          # Ask three tools the same question and keep every word they say, then
-          # look for a 64-character hex digest rather than trusting one format.
-          keytool -printcert -jarfile "$APK" >> "$RAW" 2>&1 || true
-          APKSIGNER="$(find "$SDK" -maxdepth 4 -type f -name apksigner 2>/dev/null | sort -V | tail -1)"
-          if [ -n "$APKSIGNER" ]; then
-            "$APKSIGNER" verify --print-certs "$APK" >> "$RAW" 2>&1 || true
-          fi
-          if [ -f "$HOME/.android/debug.keystore" ]; then
-            keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android >> "$RAW" 2>&1 || true
-          fi
-
-          # TEMPORARY: enough detail to tell WHICH certificate was read.
-          KEYSTORE="$HOME/.android/debug.keystore"
-          if [ -f "$KEYSTORE" ]; then
-            KS="keystore mtime=$(date -r "$KEYSTORE" -u +%Y-%m-%dT%H:%M:%SZ) size=$(stat -c%s "$KEYSTORE")"
-          else
-            KS="no debug.keystore in $HOME/.android"
-          fi
-          printf 'DEBUG %s | apksigner=%s | raw=%s\n' \
-            "$KS" \
-            "${APKSIGNER:-none}" \
-            "$(tr '\n' ' ' < "$RAW" | tr -s ' ' | cut -c1-1100)" > "$RUNNER_TEMP/diag.txt"
+          APKSIGNER="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)/apksigner"
+          RAW="$RUNNER_TEMP/verify.txt"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > "$RAW" 2>&1 || true
 
           DIGEST="$(tr -d ':' < "$RAW" | grep -o -E '[0-9a-fA-F]{64}' | head -1 | tr 'A-F' 'a-f')"
-          if [ -n "$DIGEST" ]; then
-            printf '%s\n' "$DIGEST" > "$OUT"
-            echo "apk signing certificate SHA-256: $DIGEST"
-          else
-            printf 'unreadable :: %s\n' "$(tr '\n' ' ' < "$RAW" | cut -c1-300)" > "$OUT"
-            echo "certificate could not be read:"
-            head -30 "$RAW"
-          fi
+          SCHEMES="$(grep -E '^Verified using v' "$RAW" | tr '\n' ' ' || true)"
+          printf '%s\n' "${DIGEST:-unreadable}" > "$RUNNER_TEMP/cert.txt"
+          printf 'Signature schemes: %s\n' "${SCHEMES:-unknown}" > "$RUNNER_TEMP/schemes.txt"
+          echo "certificate SHA-256: ${DIGEST:-unreadable}"
+          cat "$RUNNER_TEMP/schemes.txt"
 
       - name: Publish the install link
         if: github.event_name != 'pull_request'
@@ -174,7 +167,7 @@ jobs:
             gh release create bike-lot-latest --title "Bike Lot - latest debug APK"
           gh release edit bike-lot-latest --notes "Built from ${GITHUB_SHA} on ${GITHUB_REF_NAME}, run ${GITHUB_RUN_ID}.
           Certificate SHA-256: $(cat "$RUNNER_TEMP/cert.txt")
-          $(cat "$RUNNER_TEMP/diag.txt" 2>/dev/null || true)
+          $(cat "$RUNNER_TEMP/schemes.txt" 2>/dev/null || true)
           Debug-signed, so sideload only."
           gh release upload bike-lot-latest android/app/build/outputs/apk/debug/app-debug.apk --clobber
 
