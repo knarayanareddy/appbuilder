@@ -143,6 +143,18 @@ jobs:
             keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android >> "$RAW" 2>&1 || true
           fi
 
+          # TEMPORARY: enough detail to tell WHICH certificate was read.
+          KEYSTORE="$HOME/.android/debug.keystore"
+          if [ -f "$KEYSTORE" ]; then
+            KS="keystore mtime=$(date -r "$KEYSTORE" -u +%Y-%m-%dT%H:%M:%SZ) size=$(stat -c%s "$KEYSTORE")"
+          else
+            KS="no debug.keystore in $HOME/.android"
+          fi
+          printf 'DEBUG %s | apksigner=%s | raw=%s\n' \
+            "$KS" \
+            "${APKSIGNER:-none}" \
+            "$(tr '\n' ' ' < "$RAW" | tr -s ' ' | cut -c1-1100)" > "$RUNNER_TEMP/diag.txt"
+
           DIGEST="$(tr -d ':' < "$RAW" | grep -o -E '[0-9a-fA-F]{64}' | head -1 | tr 'A-F' 'a-f')"
           if [ -n "$DIGEST" ]; then
             printf '%s\n' "$DIGEST" > "$OUT"
@@ -162,6 +174,7 @@ jobs:
             gh release create bike-lot-latest --title "Bike Lot - latest debug APK"
           gh release edit bike-lot-latest --notes "Built from ${GITHUB_SHA} on ${GITHUB_REF_NAME}, run ${GITHUB_RUN_ID}.
           Certificate SHA-256: $(cat "$RUNNER_TEMP/cert.txt")
+          $(cat "$RUNNER_TEMP/diag.txt" 2>/dev/null || true)
           Debug-signed, so sideload only."
           gh release upload bike-lot-latest android/app/build/outputs/apk/debug/app-debug.apk --clobber
 
