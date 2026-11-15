@@ -120,6 +120,26 @@ jobs:
           ls -lh android/app/build/outputs/apk/debug/
           du -h android/app/build/outputs/apk/debug/app-debug.apk
 
+      # Which key signed this build? It decides whether a new APK installs over the
+      # previous one (keeping the data) or demands an uninstall (losing it). The
+      # digest is published in the release notes, so it can be compared run to run
+      # without downloading anything.
+      - name: Note the signing certificate
+        run: |
+          APKSIGNER="$(ls "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' > "$RUNNER_TEMP/cert.txt" || true
+          fi
+          [ -s "$RUNNER_TEMP/cert.txt" ] || echo "unknown" > "$RUNNER_TEMP/cert.txt"
+          echo "apk certificate SHA-256: $(cat "$RUNNER_TEMP/cert.txt")"
+          if [ -f "$HOME/.android/debug.keystore" ]; then
+            keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android 2>/dev/null \
+              | sed -n 's/^[[:space:]]*SHA256: //p' | head -1 | sed 's/^/debug keystore SHA-256: /' || true
+          else
+            echo "no ~/.android/debug.keystore"
+          fi
+
       # A stable link you can open on the phone: tap, download, install. The asset
       # name never changes, so the URL stays the same from build to build.
       # Skipped on pull requests, where the token is read-only.
@@ -129,9 +149,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release view bike-lot-latest > /dev/null 2>&1 || \
-            gh release create bike-lot-latest \
-              --title "Bike Lot - latest debug APK" \
-              --notes "Built from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Debug-signed, so sideload only."
+            gh release create bike-lot-latest --title "Bike Lot - latest debug APK"
+          gh release edit bike-lot-latest --notes "Built from ${GITHUB_SHA} on ${GITHUB_REF_NAME}, run ${GITHUB_RUN_ID}.
+          Certificate SHA-256: $(cat "$RUNNER_TEMP/cert.txt")
+          Debug-signed, so sideload only."
           gh release upload bike-lot-latest android/app/build/outputs/apk/debug/app-debug.apk --clobber
 
       # Optional second delivery route: with the GDRIVE_* secrets set, every build
