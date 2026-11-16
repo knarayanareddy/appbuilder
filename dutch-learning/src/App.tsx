@@ -3,6 +3,9 @@ import type { Attempt, CardState, Module, Report, Settings, Snapshot } from "@/t
 import { appendAttempt, appendReport, loadSnapshot, saveCards, saveModules, saveSettings } from "@/lib/repo";
 import { applyAnswer, buildSession, gradeFor, type Answer, type SessionItem, type SessionRequest } from "@/lib/session";
 import { buildRegistry } from "@/lib/module";
+import { newCard } from "@/lib/fsrs";
+import { applyTheme } from "@/lib/theme";
+import { configureFeedback } from "@/lib/sound";
 import { languageFor } from "@/lib/languages";
 import {
   inspectVoice,
@@ -18,6 +21,7 @@ import { WordsView } from "@/components/WordsView";
 import { ProgressView } from "@/components/ProgressView";
 import { SettingsView } from "@/components/SettingsView";
 import { StoryView } from "@/components/StoryView";
+import { Onboarding } from "@/components/Onboarding";
 import { SessionView, type SessionSummary } from "@/components/SessionView";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Card, Empty, Ring, Stat, Toast } from "@/components/ui";
@@ -66,6 +70,12 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => applyTheme(snapshot?.settings.theme ?? "system"), [snapshot?.settings.theme]);
+
+  useEffect(() => {
+    configureFeedback({ sound: snapshot?.settings.sound ?? true, haptics: snapshot?.settings.haptics ?? true });
+  }, [snapshot?.settings.sound, snapshot?.settings.haptics]);
+
   useEffect(() => {
     let alive = true;
     void inspectVoice(locale).then((status) => {
@@ -109,10 +119,15 @@ export default function App() {
 
     const at = Date.now();
     const reschedule = request?.mode !== "quiz";
-    const card = applyAnswer(item, result, at, snapshot.settings.desiredRetention, { reschedule });
-    // A quiz may test a sentence nobody has taught yet; record the answer, do not
-    // invent a schedule for it.
-    const keepCard = !(request?.mode === "quiz" && item.isNew);
+    // In a placement check a correct answer means "you already know this": schedule it
+    // as review at rung 3 instead of teaching it again.
+    const seed = Boolean(request?.seed) && item.isNew && result.correct;
+    const card = seed
+      ? { ...newCard(item.key, 3, at, snapshot.settings.desiredRetention), stage: 3 }
+      : applyAnswer(item, result, at, snapshot.settings.desiredRetention, { reschedule });
+    // A quiz may test a sentence nobody has taught yet; record the answer without
+    // inventing a schedule for it.
+    const keepCard = seed || !(request?.mode === "quiz" && item.isNew);
     const cards = keepCard ? upsertCard(snapshot.cards, card) : snapshot.cards;
     const attempt: Attempt = {
       id: `${at}-${item.key}-${item.kind}`,
@@ -162,6 +177,24 @@ export default function App() {
     showToast("Reported — it is in Settings → Translation reports");
   };
 
+  const finishIntro = async (patch: Partial<Settings>) => {
+    if (!snapshot) return;
+    await changeSettings({ ...snapshot.settings, ...patch, onboarded: true });
+    showToast("Welkom — je eerste sessie staat klaar");
+  };
+
+  const startPlacement = async (patch: Partial<Settings>) => {
+    if (!snapshot) return;
+    await changeSettings({ ...snapshot.settings, ...patch, onboarded: true });
+    startSession({ mode: "quiz", seed: true });
+  };
+
+  const replayIntro = async () => {
+    if (!snapshot) return;
+    await changeSettings({ ...snapshot.settings, onboarded: false });
+    setSummary(null);
+  };
+
   const finishSession = (result: SessionSummary) => {
     void stopSpeaking();
     setSummary(result);
@@ -183,6 +216,20 @@ export default function App() {
   }
 
   const story = storyId ? registry.stories.find((entry) => entry.story.id === storyId)?.story ?? null : null;
+
+  if (!snapshot.settings.onboarded && !queue && !story) {
+    return (
+      <div className="app">
+        <Onboarding
+          speech={speech}
+          onFinish={(patch) => void finishIntro(patch)}
+          onPlacement={(patch) => void startPlacement(patch)}
+          onInstallVoice={() => void openVoiceInstall()}
+          onCheckVoice={() => void inspectVoice(locale).then(setSpeech)}
+        />
+      </div>
+    );
+  }
 
   if (queue) {
     return (
@@ -300,6 +347,7 @@ export default function App() {
           onTestVoice={() => void play("De fiets staat achter het station.")}
           onCheckVoice={() => void inspectVoice(locale).then(setSpeech)}
           onOpenVoiceInstall={() => void openVoiceInstall()}
+          onReplayIntro={() => void replayIntro()}
           onToast={showToast}
         />
       ) : null}

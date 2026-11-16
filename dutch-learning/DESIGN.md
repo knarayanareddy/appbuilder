@@ -351,3 +351,45 @@ fix it), and nothing decorative is allowed to compete with the sentence being le
 
 Still open by design: speech recognition (M4) stays behind the offline core, and the exam
 module (inburgering task formats + KNM questions) is the next content milestone.
+
+## 17. First run, two palettes, and units that look like places
+
+§M2.5 fixed how the app looks once you are inside it. This closes the three gaps that
+still made it feel like a prototype handed over mid-build.
+
+**First run.** The old build opened on a dashboard with a full unit path, a streak and a
+settings tab: technically complete, emotionally as welcoming as a spreadsheet. There are
+now three screens — what this is, how much Dutch you already have, and whether the phone
+can actually speak Dutch — and each one changes the app, it does not just describe it.
+The level question sets `dailyNew` (8/10/12/14), which is the one number that decides how
+the next month feels. The voice screen is the app being honest before it is charming: no
+Dutch engine means an English voice butchering every sentence, so the installer is offered
+on the spot. The last button can start a 12-question placement check; a correct answer
+there schedules the sentence at review rung 3 instead of teaching it again, which is how
+you avoid re-drilling "goedemorgen" for a week. Existing installs are migrated as
+already-introduced — a welcome screen is for people who have not been here before.
+
+**Two palettes.** Light mode is not a second stylesheet. The dark palette had whites
+hard-coded into surfaces, so those became `--tint-1`, `--tint-2`, `--nav-bg`,
+`--app-frame`, `--toast-bg`; then `[data-theme="light"]` overrides the tokens and the
+handful of places where a dark-palette colour was text on a light background (`.streak`,
+`.kind-chip`, `.speaker`, verdicts, tokens). The theme is one attribute on `<html>`,
+`"system"` follows the OS live through `matchMedia`, and the meta `theme-color` is repainted
+with it. Text contrast was measured, not eyeballed: light `--dim` at `#667190` is 4.85:1 on
+white, 4.49:1 on the app background, and `--muted` is 6.26:1.
+
+**Feedback.** A correct answer gets a quiet rising two-note tone, a wrong one a soft low
+thud, and a finished session a four-note arpeggio — all synthesised with WebAudio at
+runtime, so there is no new asset, no licensing, and the APK does not grow. Haptics go
+through `@capacitor/haptics` on a phone (`ImpactStyle.Light`, `NotificationType.Error`) and
+`navigator.vibrate` in a browser; the manifest now declares `VIBRATE`. Both channels are
+switchable in Settings, and both are quiet by design: this app does not have a reward
+sound, it has a confirmation sound.
+
+**Unit art.** Emoji and stock icons were the last thing making the path look like a
+settings menu. `src/components/unitArt.tsx` draws seventeen small scenes — two speech
+bubbles, a shopping bag, a Delft-ish windmill, a heart with a pulse — as inline SVG: a
+tinted squircle, two or three shapes in one hue, and `currentColor` everywhere, so they
+recolour with the theme and cost nothing to load. Completed units get a green check on the
+corner of the art, untouched ones sit at 55% opacity, and the story nodes have their own
+scene. An unknown module id falls back to a generic pair of shapes rather than breaking.

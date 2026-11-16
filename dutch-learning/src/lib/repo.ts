@@ -48,6 +48,13 @@ export function normaliseSettings(raw: Partial<Settings> | undefined): Settings 
     voice: typeof raw?.voice === "string" && raw.voice ? raw.voice : null,
     autoPlay: typeof raw?.autoPlay === "boolean" ? raw.autoPlay : DEFAULT_SETTINGS.autoPlay,
     language: typeof raw?.language === "string" && raw.language ? raw.language : DEFAULT_SETTINGS.language,
+    theme: raw?.theme === "dark" || raw?.theme === "light" || raw?.theme === "system" ? raw.theme : DEFAULT_SETTINGS.theme,
+    sound: typeof raw?.sound === "boolean" ? raw.sound : DEFAULT_SETTINGS.sound,
+    haptics: typeof raw?.haptics === "boolean" ? raw.haptics : DEFAULT_SETTINGS.haptics,
+    // A saved settings blob without the flag means an install from before the intro
+    // existed: those learners have already found their way around, so do not greet
+    // them with the welcome screens.
+    onboarded: typeof raw?.onboarded === "boolean" ? raw.onboarded : raw ? true : DEFAULT_SETTINGS.onboarded,
   };
 }
 

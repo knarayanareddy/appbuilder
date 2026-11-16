@@ -29,13 +29,16 @@ it for every app, not just this one.
 | **Dialogen** | three short dialogues (gemeente, huisarts, markt) with line-by-line audio and English on demand — the Delftse-methode idea that context beats isolated sentences. |
 | **Modules** | the curriculum is data: paste a JSON module in Settings and it appears in Learn, in any of eight languages. See [docs/MODULE-FORMAT.md](docs/MODULE-FORMAT.md) and [docs/AUTHORING-PROMPT.md](docs/AUTHORING-PROMPT.md). |
 | **Backup** | one JSON file with schedules, history and imported modules — the only copy that survives a lost phone. |
+| **First run** | three screens: what this is, how much Dutch you already have (which sets the pace), and whether the phone can actually speak Dutch — then a 12-question placement check that skips what you already know. **Settings → Intro** replays it. |
+| **Feel** | a quiet two-note tone when an answer lands, a low thud when it does not, a short arpeggio when the session ends, plus haptics on a phone. Both can be switched off; both are generated at runtime, so there is no sound file in the APK. |
+| **Light theme** | dark by default, with a manual dark/light/system switch in Settings. Both palettes are the same tokens — the theme is one attribute on `<html>`. |
 
 No account, no network, no XP. The statistics are the ones that predict whether you can
 follow a conversation, not the ones that predict whether you come back tomorrow.
 
 ## The interface
 
-Dark, warm, and built for a thumb: a chunky orange primary action, 26px cards, a real
+Dark or light (your choice), warm, and built for a thumb: a chunky orange primary action, 26px cards, a real
 unit path with progress rings, a floating tab bar, and motion that says "that was right"
 instead of "loading". Nunito is bundled with the app (latin subset, 39 KB) so the type
 never waits on a network font, and the session is full-screen — no navigation while you
@@ -43,8 +46,13 @@ are answering.
 
 Everything is plain CSS with no UI framework: one `src/styles.css` design system
 (tokens, buttons, cards, path, feedback states) and `src/components/icons.tsx` (a
-hand-drawn 24×24 icon set). That is what makes a theme change a ten-line diff, not a
-dependency migration.
+hand-drawn 24×24 icon set). Both palettes live in the same file, so light mode is an
+override block rather than a second stylesheet.
+
+The units are not icons. Each of the seventeen has its own small scene in
+`src/components/unitArt.tsx` — two shoppers, a windmill, a coffee cup, a bike — drawn
+inline with three or four shapes in one hue, so the path reads as situations instead of
+buttons and still works with no files to load.
 
 ## Voice quality
 
@@ -60,7 +68,7 @@ dependency migration.
 ```bash
 npm install
 npm run dev        # http://localhost:5182 — the web build is the same app
-npm run check      # typecheck + 73 tests
+npm run check      # typecheck + 82 tests
 npm run build      # static build into dist/
 node scripts/audio-index.mjs   # re-index bundled recordings
 ```
@@ -73,6 +81,10 @@ node scripts/audio-index.mjs   # re-index bundled recordings
 | `src/content/nl-basis.ts` | The built-in Dutch module — plain rows, no database |
 | `src/lib/repo.ts` | IndexedDB persistence, repair of old records, backup/restore |
 | `src/components/SessionView.tsx` | The six drill types |
+| `src/components/Onboarding.tsx` | First run: intro, level question, voice check |
+| `src/components/unitArt.tsx` | One inline-SVG scene per unit, no image files |
+| `src/lib/sound.ts` | Synthesised feedback tones + native haptics (both optional) |
+| `src/lib/theme.ts` | `data-theme` painting, including live system-follow |
 | `docs/` | Module format, AI authoring prompt, audio pipeline |
 | `DESIGN.md` | The full design: evidence, curriculum, traps, milestones |
 

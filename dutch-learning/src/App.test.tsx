@@ -4,15 +4,17 @@ import { beforeEach, describe, expect, it } from "vitest";
 import App from "./App";
 import { itemKey } from "./lib/module";
 import { configureDb } from "./lib/db";
-import { loadSnapshot, saveCards } from "./lib/repo";
-import type { CardState } from "./types";
+import { loadSnapshot, saveCards, saveSettings } from "./lib/repo";
+import { DEFAULT_SETTINGS, type CardState } from "./types";
 
 const KEY = itemKey("nl-basis", "kennismaking", "s001");
 let counter = 0;
 
-beforeEach(() => {
+beforeEach(async () => {
   counter += 1;
   configureDb({ name: `taal-app-test-${counter}` });
+  // Most tests start from an app that has already been introduced.
+  await saveSettings({ ...DEFAULT_SETTINGS, onboarded: true });
 });
 
 function card(overrides: Partial<CardState> = {}): CardState {
@@ -127,5 +129,74 @@ describe("App", () => {
 
     await user.type(screen.getByLabelText("Search sentences"), "huisarts");
     await waitFor(() => expect(screen.getByText("Ik wil graag een afspraak met de huisarts.")).toBeInTheDocument());
+  });
+});
+
+describe("first run", () => {
+  it("welcomes a new learner, asks how much Dutch they have, and starts", async () => {
+    counter += 1;
+    configureDb({ name: `taal-onboarding-${counter}` });
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByRole("button", { name: "Get started" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Get started" }));
+
+    await user.click(screen.getByRole("button", { name: /Ik red me/ }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    // The third screen checks the voice, then offers the placement check or a plain start.
+    await user.click(await screen.findByRole("button", { name: "Start from the beginning" }));
+
+    await waitFor(async () => {
+      const snapshot = await loadSnapshot();
+      expect(snapshot.settings.onboarded).toBe(true);
+      expect(snapshot.settings.dailyNew).toBe(12);
+    });
+    expect(await screen.findByRole("button", { name: /Continue ·/ })).toBeInTheDocument();
+  });
+
+  it("can skip the intro from the first screen", async () => {
+    counter += 1;
+    configureDb({ name: `taal-onboarding-skip-${counter}` });
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Skip" }));
+    await waitFor(async () => expect((await loadSnapshot()).settings.onboarded).toBe(true));
+  });
+});
+
+describe("look and feel", () => {
+  it("switches theme and remembers it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+    await user.click(await screen.findByRole("button", { name: "Light" }));
+
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("light"));
+    expect((await loadSnapshot()).settings.theme).toBe("light");
+
+    await user.click(screen.getByRole("button", { name: "Dark" }));
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("dark"));
+  });
+
+  it("turns sound and haptics off and on", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+
+    const sound = await screen.findByRole("switch", { name: "Sound" });
+    expect(sound).toHaveAttribute("aria-checked", "true");
+    await user.click(sound);
+    await waitFor(async () => expect((await loadSnapshot()).settings.sound).toBe(false));
+
+    const haptics = screen.getByRole("switch", { name: "Haptics" });
+    await user.click(haptics);
+    await waitFor(async () => expect((await loadSnapshot()).settings.haptics).toBe(false));
   });
 });

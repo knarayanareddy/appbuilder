@@ -19,6 +19,7 @@ export function SettingsView({
   onTestVoice,
   onCheckVoice,
   onOpenVoiceInstall,
+  onReplayIntro,
   onToast,
 }: {
   registry: Registry;
@@ -31,6 +32,7 @@ export function SettingsView({
   onTestVoice: () => void;
   onCheckVoice: () => void;
   onOpenVoiceInstall: () => void;
+  onReplayIntro: () => void;
   onToast: (message: string) => void;
 }) {
   const [errors, setErrors] = useState<string[]>([]);
@@ -240,6 +242,74 @@ export function SettingsView({
             <p className="tiny dim">New cards and dictation speak without a tap.</p>
           </div>
           <Toggle on={settings.autoPlay} label="Play audio automatically" onChange={() => update({ autoPlay: !settings.autoPlay })} />
+        </div>
+      </Card>
+
+      <SectionTitle>Look and feel</SectionTitle>
+      <Card>
+        <div className="list-row">
+          <span className="list-row-icon">
+            <Icon name="sparkle" size={18} />
+          </span>
+          <div className="grow">
+            <p className="small" style={{ fontWeight: 800 }}>
+              Theme
+            </p>
+            <p className="tiny dim">Follow the system, or force one.</p>
+          </div>
+        </div>
+        <div className="segmented" role="group" aria-label="Theme" style={{ marginTop: 10 }}>
+          {(["dark", "light", "system"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={settings.theme === option}
+              onClick={() => update({ theme: option })}
+            >
+              {option === "dark" ? "Dark" : option === "light" ? "Light" : "System"}
+            </button>
+          ))}
+        </div>
+
+        <div className="list-row" style={{ marginTop: 6 }}>
+          <span className="list-row-icon">
+            <Icon name="speaker" size={18} />
+          </span>
+          <div className="grow">
+            <p className="small" style={{ fontWeight: 800 }}>
+              Sound
+            </p>
+            <p className="tiny dim">A short tone for right and wrong. Synthesised, so no files.</p>
+          </div>
+          <Toggle on={settings.sound} label="Sound" onChange={() => update({ sound: !settings.sound })} />
+        </div>
+
+        <div className="list-row">
+          <span className="list-row-icon">
+            <Icon name="puzzle" size={18} />
+          </span>
+          <div className="grow">
+            <p className="small" style={{ fontWeight: 800 }}>
+              Haptics
+            </p>
+            <p className="tiny dim">A tap you can feel when an answer lands.</p>
+          </div>
+          <Toggle on={settings.haptics} label="Haptics" onChange={() => update({ haptics: !settings.haptics })} />
+        </div>
+
+        <div className="list-row">
+          <span className="list-row-icon">
+            <Icon name="refresh" size={18} />
+          </span>
+          <div className="grow">
+            <p className="small" style={{ fontWeight: 800 }}>
+              Intro
+            </p>
+            <p className="tiny dim">Run the welcome screens and the level question again.</p>
+          </div>
+          <Button size="sm" onClick={onReplayIntro}>
+            Show
+          </Button>
         </div>
       </Card>
 

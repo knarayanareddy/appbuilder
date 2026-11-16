@@ -86,6 +86,8 @@ export interface Attempt {
   mode?: SessionMode;
 }
 
+export type Theme = "dark" | "light" | "system";
+
 export interface Settings {
   /** How many new sentences the daily session introduces. Practice is never capped. */
   dailyNew: number;
@@ -96,6 +98,11 @@ export interface Settings {
   autoPlay: boolean;
   /** Language being learned, so a second module in another language still works. */
   language: string;
+  theme: Theme;
+  sound: boolean;
+  haptics: boolean;
+  /** False until the intro has been seen once. */
+  onboarded: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -105,6 +112,10 @@ export const DEFAULT_SETTINGS: Settings = {
   voice: null,
   autoPlay: true,
   language: "nl",
+  theme: "system",
+  sound: true,
+  haptics: true,
+  onboarded: false,
 };
 
 /** Items whose translation looks wrong, kept on the device so they can be exported. */

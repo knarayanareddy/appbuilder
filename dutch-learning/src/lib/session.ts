@@ -18,6 +18,8 @@ export interface SessionRequest {
   mode: SessionMode;
   unitKey?: string;
   limit?: number;
+  /** Placement check: right answers are scheduled as if already learned. */
+  seed?: boolean;
 }
 
 /** The drill ladder. Every sentence climbs it; a failure drops it one rung. */

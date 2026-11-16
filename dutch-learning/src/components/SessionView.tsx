@@ -12,6 +12,7 @@ import {
   sameSequence,
   splitWords,
 } from "@/lib/text";
+import { feedbackComplete, feedbackCorrect, feedbackWrong } from "@/lib/sound";
 import { Icon, type IconName } from "./icons";
 import { Button, Card, Chip, Empty, IconButton, Option, Speaker } from "./ui";
 
@@ -139,6 +140,8 @@ export function SessionView({
     setPending(answer);
     setPhase("feedback");
     setTyped(typedAnswer);
+    if (answer.correct) feedbackCorrect();
+    else feedbackWrong();
   }
 
   function checkTyped() {
@@ -170,6 +173,7 @@ export function SessionView({
     await onAnswer(item, answer, typedAnswer, Date.now() - startedAt.current);
 
     if (index + 1 >= items.length) {
+      feedbackComplete();
       onFinish({ done: countedDone, correct: countedCorrect });
       return;
     }

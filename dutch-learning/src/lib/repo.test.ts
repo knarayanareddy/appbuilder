@@ -10,6 +10,7 @@ import {
   loadSnapshot,
   normaliseCard,
   normaliseModules,
+  normaliseSettings,
   saveCards,
   saveModules,
   saveSettings,
@@ -140,5 +141,34 @@ describe("repo", () => {
   it("refuses a file that is not a backup", async () => {
     await expect(importSnapshot("not json at all")).rejects.toThrow(/not JSON/i);
     await expect(importSnapshot('{"hello":true}')).rejects.toThrow(/Taal backup/i);
+  });
+});
+
+describe("settings migration", () => {
+  it("greets a brand-new install with the intro", () => {
+    expect(normaliseSettings(undefined).onboarded).toBe(false);
+  });
+
+  it("does not re-introduce an install that predates the intro", () => {
+    const legacy = normaliseSettings({ dailyNew: 8 } as Partial<typeof DEFAULT_SETTINGS>);
+    expect(legacy.onboarded).toBe(true);
+    expect(legacy.dailyNew).toBe(8);
+    expect(legacy.theme).toBe("system");
+    expect(legacy.sound).toBe(true);
+    expect(legacy.haptics).toBe(true);
+  });
+
+  it("keeps choices and rejects nonsense", () => {
+    const settings = normaliseSettings({
+      onboarded: false,
+      theme: "light",
+      sound: false,
+      haptics: false,
+    } as Partial<typeof DEFAULT_SETTINGS>);
+    expect(settings).toMatchObject({ onboarded: false, theme: "light", sound: false, haptics: false });
+
+    const bad = normaliseSettings({ theme: "sepia", sound: "yes" } as unknown as Partial<typeof DEFAULT_SETTINGS>);
+    expect(bad.theme).toBe("system");
+    expect(bad.sound).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import type { Registry } from "@/lib/module";
 import type { SessionRequest } from "@/lib/session";
 import { computeStats } from "@/lib/stats";
 import { Icon } from "./icons";
+import { UnitArt } from "./unitArt";
 import { Bar, Card, SectionTitle } from "./ui";
 
 function greeting(hour: number): string {
@@ -131,8 +132,13 @@ export function LearnView({
           const done = known === entry.items.length;
           return (
             <button key={entry.key} type="button" className="node" onClick={() => onOpenUnit(entry.key)}>
-              <span className={`node-badge${done ? " done" : started === 0 ? " new" : ""}`}>
-                {done ? <Icon name="check" size={20} /> : started === 0 ? <Icon name="lock" size={16} /> : `${known}`}
+              <span className="art-wrap" data-state={done ? "done" : started === 0 ? "new" : "active"}>
+                <UnitArt unitId={entry.unit.id} />
+                {done ? (
+                  <span className="art-check">
+                    <Icon name="check" size={12} />
+                  </span>
+                ) : null}
               </span>
               <span className="node-body">
                 <span className="row spread">
@@ -155,9 +161,7 @@ export function LearnView({
           <div className="stack">
             {registry.stories.map(({ story }) => (
               <button key={story.id} type="button" className="node" onClick={() => onOpenStory(story.id)}>
-                <span className="node-badge new" style={{ color: "#d8c9ff" }}>
-                  <Icon name="book" size={18} />
-                </span>
+                <UnitArt unitId={story.id} story />
                 <span className="node-body">
                   <span className="row spread">
                     <span className="node-title">{story.title}</span>
