@@ -38,20 +38,32 @@ follow a conversation, not the ones that predict whether you come back tomorrow.
 
 ## The interface
 
-Dark or light (your choice), warm, and built for a thumb: a chunky orange primary action, 26px cards, a real
-unit path with progress rings, a floating tab bar, and motion that says "that was right"
-instead of "loading". Nunito is bundled with the app (latin subset, 39 KB) so the type
-never waits on a network font, and the session is full-screen — no navigation while you
-are answering.
+Quiet, typographic, and built on one accent. The screen is a neutral canvas (black, or
+#F2F2F7 in light mode) with a single 560px column of white/`#1c1c1e` surfaces, hairline
+separators instead of borders, and orange reserved for exactly two things: the next
+action, and the section you are in. Everything else is hierarchy by size and weight.
 
-Everything is plain CSS with no UI framework: one `src/styles.css` design system
-(tokens, buttons, cards, path, feedback states) and `src/components/icons.tsx` (a
-hand-drawn 24×24 icon set). Both palettes live in the same file, so light mode is an
-override block rather than a second stylesheet.
+The type scale is Apple's: 34pt large title, 17pt body and headline, 15pt subhead, 13pt
+footnote, 12–11pt captions, with the system font stack (`-apple-system`, then Roboto on
+Android) so the app reads native on whatever phone it lands on. Nothing is bundled, so
+nothing waits on a download and nothing looks off-platform. Tap targets are 44pt, the tab
+bar is 49pt with a translucent blur, and the palette is tokens: light mode is an override
+block, not a second stylesheet.
+
+This was a deliberate pass away from the consumer-app look: no rainbow gradients, no
+glowing background, no 3px "press edge" on buttons, no confetti, no coloured icon chips on
+every card, and no seventeen-hue unit art. Those are the tells that make an interface read
+as machine-made. The path is a grouped list now, the units are drawn in one ink colour,
+and colour only ever means state — done is green, next is orange, wrong is red.
+
+Everything is plain CSS: one `src/styles.css` (tokens, type, surfaces, controls, session
+states) and `src/components/icons.tsx` (a hand-drawn 24×24 set at 2px strokes). Progress
+rings are stroke-only; motion is one easing curve, `cubic-bezier(.32,.72,0,1)`, and it
+respects `prefers-reduced-motion`.
 
 The units are not icons. Each of the seventeen has its own small scene in
 `src/components/unitArt.tsx` — two shoppers, a windmill, a coffee cup, a bike — drawn
-inline with three or four shapes in one hue, so the path reads as situations instead of
+inline with three or four shapes in one ink, so the list reads as situations instead of
 buttons and still works with no files to load.
 
 ## Voice quality

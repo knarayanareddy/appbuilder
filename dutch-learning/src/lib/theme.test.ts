@@ -10,7 +10,7 @@ describe("theme", () => {
   it("paints the document and the browser chrome", () => {
     applyTheme("light");
     expect(document.documentElement.dataset.theme).toBe("light");
-    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#f4f6fd");
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#f2f2f7");
 
     applyTheme("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");

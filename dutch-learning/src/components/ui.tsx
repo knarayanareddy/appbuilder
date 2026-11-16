@@ -90,33 +90,22 @@ export function Ring({
   sublabel?: string;
   tone?: "green" | "orange" | "violet";
 }) {
-  const stroke = 11;
+  const stroke = 9;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const fraction = max > 0 ? Math.min(1, value / max) : 0;
-  const colors: Record<string, [string, string]> = {
-    green: ["#2dd4bf", "#3ddc97"],
-    orange: ["#ff9a63", "#ff7a3d"],
-    violet: ["#a78bfa", "#8b5cf6"],
-  };
-  const [from, to] = colors[tone];
+  const color = tone === "green" ? "var(--green)" : "var(--accent)";
 
   return (
     <div className="ring-wrap" style={{ width: size, height: size }}>
       <svg className="ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-        <defs>
-          <linearGradient id={`ring-${tone}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={from} />
-            <stop offset="100%" stopColor={to} />
-          </linearGradient>
-        </defs>
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--tint-2)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--surface-3)" strokeWidth={stroke} />
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={`url(#ring-${tone})`}
+          stroke={color}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}

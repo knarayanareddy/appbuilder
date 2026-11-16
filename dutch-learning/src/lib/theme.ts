@@ -4,7 +4,7 @@ import type { Theme } from "@/types";
  * Theme lives on `<html data-theme>` so the whole palette switches with one attribute;
  * "system" follows the OS and keeps following it while the app is open.
  */
-const THEME_COLOR = { dark: "#090b14", light: "#f4f6fd" } as const;
+const THEME_COLOR = { dark: "#000000", light: "#f2f2f7" } as const;
 
 export function resolveTheme(theme: Theme): "dark" | "light" {
   if (theme !== "system") return theme;

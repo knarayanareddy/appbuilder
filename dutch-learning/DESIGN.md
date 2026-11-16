@@ -393,3 +393,63 @@ tinted squircle, two or three shapes in one hue, and `currentColor` everywhere, 
 recolour with the theme and cost nothing to load. Completed units get a green check on the
 corner of the art, untouched ones sit at 55% opacity, and the story nodes have their own
 scene. An unknown module id falls back to a generic pair of shapes rather than breaking.
+
+## 18. The premium pass: why it looked machine-made, and what replaced it
+
+The complaint was that the interface "screams AI generated". That is a real, documented
+failure mode rather than a matter of taste, and it has named causes: a model with no
+committed direction returns the statistical average of its training data — the purple
+gradient, the grey 1px border on every card, the gradient badge above a headline, the
+row of three identical feature cards, the playful bounce. The fix is not a better
+adjective, it is a decision: lock the tokens, cap the palette, pick a real type scale,
+default to borderless, and measure contrast.
+
+This version commits to **one ink, one accent, type-led hierarchy** — the Apple-shaped
+answer, because that is what "polished and premium, think Apple" means in practice.
+
+**What came out** (each was a tell):
+
+| Removed | Why it read as generated |
+| --- | --- |
+| Orange→rose→violet CTA gradient | multi-hue gradients are the single most reliable tell |
+| Radial colour glows on the page background | neon-on-dark decoration nobody asked for |
+| 3px hard "press edge" under every button | game-app skeuomorphism, not depth |
+| Confetti on the summary | celebration as noise; the number is the reward |
+| Per-mode icon colours (violet/teal/rose) | four hues doing no work; colour is for state |
+| Seventeen coloured unit illustrations | a rainbow list reads as unedited output |
+| Emoji-adjacent badges above every headline | the "gradient badge above the H1" pattern |
+| Nunito, bundled | a friendly display face fighting the platform; the system font is the premium choice |
+| Fake phone bezel note on desktop | decoration standing in for layout |
+
+**What replaced it:**
+
+- **Surfaces.** `#000` canvas, `#1c1c1e` surfaces, `#2c2c2e` controls (dark); `#f2f2f7`,
+  `#fff`, `#e4e4ea` (light) — Apple's grouped-background values, which is why light mode
+  reads like Settings rather than an inverted dark theme. No gradients on chrome, ever.
+- **Type.** The iOS scale (34 / 28 / 22 / 17 / 15 / 13 / 12 / 11) with tracking
+  `-0.028em` at display sizes tapering to `0` by footnote. Body is 17px — Apple's
+  legibility floor — so the previous 15px body is gone. The system stack means SF Pro on
+  iOS and Roboto on Android, both of which a bundled font cannot beat for "native".
+- **Structure.** Hairline separators inside grouped containers instead of a border on
+  every card; the unit path is now an inset list with 76px rows, art on the left and a
+  4px progress bar; the three practice modes became one grouped list with trailing
+  metadata instead of three identical cards, and the three headline statistics became a
+  single card split by hairlines; the tab bar is 49pt with `backdrop-filter: saturate(180%) blur(24px)`
+  and a hairline top edge; the active tab gains weight via stroke-width, not a filled
+  shape, because this icon set is drawn for strokes.
+- **Colour discipline.** One accent (`#ff7a45`), three semantics (`#30d158` green,
+  `#ff453a` red, `#ffd60a` amber), and nothing else. Semantic colours appear only as
+  status pills and verdict panels, always as a 12–16% tint behind text, never as a fill.
+- **Motion.** One curve, `cubic-bezier(.32,.72,0,1)`, 160–240ms, scale 0.975 on press.
+  No bounce, no entrance animations, and `prefers-reduced-motion` disables the rest.
+
+**Verification.** There is no headless browser in this environment, so the pass was
+checked the way a stylesheet can be: every selector from the previous sheet exists in the
+new one (scripted diff — 177 selectors, 0 meaningful omissions), every `var(--token)` used
+in TSX is defined in CSS (scripted check — 0 missing), contrast computed numerically
+(dark `--label-2` 6.2:1 and `--label-3` 4.6:1 on `#1c1c1e`; light `--label-2` 6.3:1 and
+`--label-3` 4.7:1 on white — Apple's own tertiary label sits at 3.4:1 and is pushed up
+here deliberately, because a 12px uppercase section header is not large text; accent ink
+on accent 7.4:1 dark / 6.1:1 light),
+typecheck clean, 89 tests, production build green. The one thing pixels would catch that
+maths cannot is optical spacing, which is the next thing to eyeball on a device.

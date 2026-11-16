@@ -46,7 +46,7 @@ export function Onboarding({
                 width: dot === step ? 22 : 8,
                 height: 8,
                 borderRadius: 999,
-                background: dot === step ? "var(--primary)" : "var(--line-2)",
+                background: dot === step ? "var(--accent)" : "var(--surface-3)",
                 transition: "width .25s ease, background .25s ease",
               }}
             />
@@ -60,7 +60,7 @@ export function Onboarding({
       {step === 0 ? (
         <>
           <div style={{ display: "grid", placeItems: "center", marginTop: 10 }}>
-            <UnitArt unitId="taal" size={116} />
+            <UnitArt unitId="taal" size={116} accent />
           </div>
           <div style={{ textAlign: "center" }}>
             <p className="hero-eyebrow">Nederlands · offline</p>
@@ -113,9 +113,8 @@ export function Onboarding({
                 className="option"
                 aria-pressed={level.id === entry.id}
                 style={{
-                  borderColor: level.id === entry.id ? "var(--primary)" : undefined,
-                  boxShadow: level.id === entry.id ? "0 0 0 2px rgba(255,122,61,.35)" : undefined,
-                }}
+                  boxShadow: level.id === entry.id ? "inset 0 0 0 2px var(--accent)" : undefined,
+                                  }}
                 onClick={() => setLevel(entry)}
               >
                 <span className="row spread">
@@ -151,7 +150,7 @@ export function Onboarding({
           </div>
           <Card>
             <div className="row" style={{ alignItems: "flex-start" }}>
-              <span className="list-row-icon" style={{ color: speech?.supported ? "var(--green)" : "var(--gold)" }}>
+              <span className="list-row-icon" style={{ color: speech?.supported ? "var(--green-text)" : "var(--amber-text)" }}>
                 <Icon name="speaker" size={18} />
               </span>
               <div className="grow">

@@ -105,7 +105,7 @@ export function WordsView({
                     </div>
                   ) : null}
                 </button>
-                <span style={{ color: "var(--dim)", transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }}>
+                <span style={{ color: "var(--label-3)", transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }}>
                   <Icon name="chevron" size={18} />
                 </span>
               </div>

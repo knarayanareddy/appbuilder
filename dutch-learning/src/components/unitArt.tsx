@@ -1,19 +1,18 @@
 import type { ReactNode } from "react";
 
 /**
- * Unit illustrations. Not icons — small scenes, drawn with three or four shapes and a
- * single hue per unit, so the path reads as a set of situations rather than a list of
- * buttons. Everything is inline SVG: no image files, no downloads, and it recolours
- * with the theme.
+ * Unit illustrations. Not icons — small scenes, drawn with three or four shapes, in one
+ * ink colour, so the list reads as a set of situations rather than a row of buttons.
+ * Monochrome on purpose: colour is reserved for state (done, next action), and a rainbow
+ * of seventeen hues is the fastest way to look machine-made. Inline SVG only: no image
+ * files, no downloads, and it recolours with the theme.
  */
 interface Art {
-  color: string;
   shapes: ReactNode;
 }
 
 const ART: Record<string, Art> = {
   kennismaking: {
-    color: "#ff7a3d",
     shapes: (
       <>
         <rect x="9" y="13" width="30" height="20" rx="7" fill="currentColor" opacity="0.45" />
@@ -25,7 +24,6 @@ const ART: Record<string, Art> = {
     ),
   },
   boodschappen: {
-    color: "#2dd4bf",
     shapes: (
       <>
         <path d="M17 24h30l-3.5 24a4 4 0 0 1-4 3.5H24.5a4 4 0 0 1-4-3.5z" fill="currentColor" opacity="0.45" />
@@ -36,7 +34,6 @@ const ART: Record<string, Art> = {
     ),
   },
   wonen: {
-    color: "#8b5cf6",
     shapes: (
       <>
         <path d="M32 11 53 29v22a2 2 0 0 1-2 2H13a2 2 0 0 1-2-2V29z" fill="currentColor" opacity="0.45" />
@@ -47,7 +44,6 @@ const ART: Record<string, Art> = {
     ),
   },
   gemeente: {
-    color: "#5b8cff",
     shapes: (
       <>
         <rect x="17" y="9" width="28" height="44" rx="5" fill="currentColor" opacity="0.45" />
@@ -59,7 +55,6 @@ const ART: Record<string, Art> = {
     ),
   },
   gezondheid: {
-    color: "#ff5d73",
     shapes: (
       <>
         <path
@@ -72,7 +67,6 @@ const ART: Record<string, Art> = {
     ),
   },
   werk: {
-    color: "#ffc64b",
     shapes: (
       <>
         <rect x="13" y="17" width="38" height="24" rx="4" fill="currentColor" opacity="0.45" />
@@ -83,7 +77,6 @@ const ART: Record<string, Art> = {
     ),
   },
   vervoer: {
-    color: "#3ddc97",
     shapes: (
       <>
         <circle cx="19" cy="42" r="9.5" stroke="currentColor" strokeWidth="3.2" fill="none" />
@@ -95,7 +88,6 @@ const ART: Record<string, Art> = {
     ),
   },
   familie: {
-    color: "#ff8fb1",
     shapes: (
       <>
         <circle cx="32" cy="21" r="7.5" fill="currentColor" />
@@ -106,7 +98,6 @@ const ART: Record<string, Art> = {
     ),
   },
   eten: {
-    color: "#ff9a63",
     shapes: (
       <>
         <path d="M17 26h24v12a10 10 0 0 1-10 10h-4a10 10 0 0 1-10-10z" fill="currentColor" opacity="0.45" />
@@ -117,7 +108,6 @@ const ART: Record<string, Art> = {
     ),
   },
   tijd: {
-    color: "#ffc64b",
     shapes: (
       <>
         <circle cx="32" cy="32" r="20" fill="currentColor" opacity="0.4" />
@@ -127,7 +117,6 @@ const ART: Record<string, Art> = {
     ),
   },
   taal: {
-    color: "#a78bfa",
     shapes: (
       <>
         <path d="M12 20c6-4 13-4 20 0 7-4 14-4 20 0v26c-6-4-13-4-20 0-7-4-14-4-20 0z" fill="currentColor" opacity="0.45" />
@@ -137,7 +126,6 @@ const ART: Record<string, Art> = {
     ),
   },
   knm: {
-    color: "#2dd4bf",
     shapes: (
       <>
         <path d="M27 54h10l-2-30h-6z" fill="currentColor" opacity="0.5" />
@@ -147,7 +135,6 @@ const ART: Record<string, Art> = {
     ),
   },
   bellen: {
-    color: "#5b8cff",
     shapes: (
       <>
         <rect x="20" y="8" width="24" height="48" rx="6" fill="currentColor" opacity="0.45" />
@@ -158,7 +145,6 @@ const ART: Record<string, Art> = {
     ),
   },
   vrijetijd: {
-    color: "#3ddc97",
     shapes: (
       <>
         <circle cx="23" cy="23" r="9" fill="currentColor" />
@@ -169,7 +155,6 @@ const ART: Record<string, Art> = {
     ),
   },
   klachten: {
-    color: "#ff5d73",
     shapes: (
       <>
         <path d="M32 10 56 51H8z" fill="currentColor" opacity="0.4" />
@@ -181,7 +166,6 @@ const ART: Record<string, Art> = {
 };
 
 const FALLBACK: Art = {
-  color: "#8b5cf6",
   shapes: (
     <>
       <rect x="12" y="16" width="24" height="24" rx="7" fill="currentColor" opacity="0.4" />
@@ -191,7 +175,6 @@ const FALLBACK: Art = {
 };
 
 const STORY_ART: Art = {
-  color: "#8b5cf6",
   shapes: (
     <>
       <rect x="9" y="14" width="34" height="22" rx="8" fill="currentColor" opacity="0.45" />
@@ -205,10 +188,12 @@ export function UnitArt({
   unitId,
   size = 48,
   story = false,
+  accent = false,
 }: {
   unitId: string;
   size?: number;
   story?: boolean;
+  accent?: boolean;
 }) {
   const art = story ? STORY_ART : (ART[unitId] ?? FALLBACK);
   return (
@@ -218,12 +203,11 @@ export function UnitArt({
       height={size}
       viewBox="0 0 64 64"
       aria-hidden="true"
-      style={{ color: art.color }}
+      style={{ color: accent ? "var(--accent)" : "var(--label-2)" }}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <rect width="64" height="64" rx="19" fill="currentColor" opacity="0.13" />
-      <circle cx="50" cy="14" r="18" fill="currentColor" opacity="0.09" />
+      <rect width="64" height="64" rx="18" fill="currentColor" opacity="0.16" />
       {art.shapes}
     </svg>
   );

@@ -36,8 +36,6 @@ const TABS: Array<{ id: Tab; label: string; icon: IconName }> = [
   { id: "settings", label: "Settings", icon: "settings" },
 ];
 
-const CONFETTI = ["#ff7a3d", "#3ddc97", "#8b5cf6", "#ffc64b", "#2dd4bf"];
-
 function upsertCard(cards: CardState[], card: CardState): CardState[] {
   const index = cards.findIndex((existing) => existing.itemId === card.itemId);
   if (index === -1) return [...cards, card];
@@ -303,18 +301,6 @@ export default function App() {
       {summary ? (
         <div className="screen">
           <Card className="summary-card">
-            <div className="confetti" aria-hidden="true">
-              {Array.from({ length: 18 }, (_, index) => (
-                <i
-                  key={index}
-                  style={{
-                    left: `${(index * 37) % 100}%`,
-                    background: CONFETTI[index % CONFETTI.length],
-                    animationDelay: `${(index % 6) * 90}ms`,
-                  }}
-                />
-              ))}
-            </div>
             <p className="hero-eyebrow">Sessie klaar</p>
             <div style={{ display: "grid", placeItems: "center", margin: "14px 0" }}>
               <Ring value={summary.correct} max={Math.max(1, summary.done)} label={`${accuracy}%`} sublabel="accuracy" />
@@ -385,7 +371,7 @@ export default function App() {
       {!speech?.supported && speech && !summary && tab === "learn" ? (
         <Card tight>
           <div className="row" style={{ alignItems: "flex-start" }}>
-            <span style={{ color: "var(--gold)" }}>
+            <span style={{ color: "var(--accent)" }}>
               <Icon name="speaker" size={18} />
             </span>
             <p className="tiny grow">
@@ -407,7 +393,7 @@ export default function App() {
               aria-current={tab === entry.id ? "page" : undefined}
               onClick={() => setTab(entry.id)}
             >
-              <Icon name={entry.icon} size={20} />
+              <Icon name={entry.icon} size={22} />
               {entry.label}
             </button>
           ))}

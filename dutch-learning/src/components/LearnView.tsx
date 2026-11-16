@@ -69,19 +69,8 @@ export function LearnView({
                 : `${stats.due} reviews · ${stats.newAvailable} new sentences`}
             </p>
           </div>
-          <span
-            style={{
-              display: "grid",
-              placeItems: "center",
-              width: 44,
-              height: 44,
-              borderRadius: 15,
-              background: "rgba(0,0,0,0.22)",
-              color: "#fff",
-              flex: "0 0 auto",
-            }}
-          >
-            <Icon name="arrow" size={22} />
+          <span className="cta-go">
+            <Icon name="arrow" size={20} />
           </span>
         </div>
       </button>
