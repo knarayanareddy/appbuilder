@@ -60,9 +60,18 @@ buttons and still works with no files to load.
   — a real Dutch voice, identical on every phone. Twenty of the 121 sentences are
   recorded today (units 1–2 plus the first sentence of unit 3); **Settings → Voice** shows
   the exact count, and the rest of the course is recorded in batches of ten.
-- Otherwise the phone's own engine speaks, but only after Taal checks the Dutch voice
-  exists: without it, Android would read Dutch with an English voice and butcher it. When
-  it is missing the app says so and offers the installer instead of playing the wrong voice.
+- Otherwise the phone's own engine speaks — and it speaks *every* sentence, including
+  everything in an imported module, so coverage is never limited by what has been
+  recorded. Without the Dutch pack, Android reads Dutch in an English voice; the app
+  checks first and offers the installer.
+- If the pack is missing you can still choose sound over silence: **Settings → Voice →
+  English voice as a last resort** (on by default). The app then speaks with whatever
+  voice the phone has, tells you once that it is approximate, and marks the card
+  `approximate` instead of pretending it is right. Turn it off and it stays quiet and
+  explains why.
+- The catch that no app can fix: the Dutch voice is a Google text-to-speech pack, one
+  download for the whole phone, installed by you, not by the app. Any engine works,
+  including third-party offline ones with their own Dutch voices.
 - Pick the voice and the speed in **Settings → Voice**. That screen also explains the
   one thing the app cannot do for you: Android's Dutch voice is a Google text-to-speech
   pack, installed once for the whole phone. The app opens the installer; Android makes
@@ -73,7 +82,7 @@ buttons and still works with no files to load.
 ```bash
 npm install
 npm run dev        # http://localhost:5182 — the web build is the same app
-npm run check      # typecheck + 85 tests
+npm run check      # typecheck + 89 tests
 npm run build      # static build into dist/
 node scripts/audio-index.mjs   # re-index bundled recordings
 ```

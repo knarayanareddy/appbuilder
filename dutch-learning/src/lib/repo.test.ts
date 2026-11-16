@@ -156,6 +156,7 @@ describe("settings migration", () => {
     expect(legacy.theme).toBe("system");
     expect(legacy.sound).toBe(true);
     expect(legacy.haptics).toBe(true);
+    expect(legacy.approximateVoice).toBe(true);
   });
 
   it("keeps choices and rejects nonsense", () => {
@@ -164,8 +165,15 @@ describe("settings migration", () => {
       theme: "light",
       sound: false,
       haptics: false,
+      approximateVoice: false,
     } as Partial<typeof DEFAULT_SETTINGS>);
-    expect(settings).toMatchObject({ onboarded: false, theme: "light", sound: false, haptics: false });
+    expect(settings).toMatchObject({
+      onboarded: false,
+      theme: "light",
+      sound: false,
+      haptics: false,
+      approximateVoice: false,
+    });
 
     const bad = normaliseSettings({ theme: "sepia", sound: "yes" } as unknown as Partial<typeof DEFAULT_SETTINGS>);
     expect(bad.theme).toBe("system");

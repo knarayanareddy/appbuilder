@@ -193,7 +193,14 @@ export async function openVoiceInstall(): Promise<boolean> {
     await TextToSpeech.openInstall();
     return true;
   } catch {
-    return false;
+    // No default engine, or an engine with no install activity: hand over to the
+    // system browser so the learner still has a way forward.
+    try {
+      window.open("https://play.google.com/store/apps/details?id=com.google.android.tts", "_system");
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -201,18 +208,27 @@ export interface SpeakOptions {
   locale: string;
   rate?: number;
   voiceUri?: string | null;
+  /** True when the learner prefers a wrong voice to silence. */
+  allowApproximate?: boolean;
+}
+
+export interface SpeakResult {
+  ok: boolean;
+  /** The engine had no voice for the language and spoke with another one. */
+  approximate?: boolean;
+  error?: string;
 }
 
 let speaking = false;
 let utteranceRef: SpeechSynthesisUtterance | null = null;
 
-export async function speak(text: string, options: SpeakOptions): Promise<{ ok: boolean; error?: string }> {
+export async function speak(text: string, options: SpeakOptions): Promise<SpeakResult> {
   const rate = options.rate ?? 0.9;
 
   if (isNative()) {
     try {
       const status = await inspectVoice(options.locale);
-      if (!status.supported) {
+      if (!status.supported && !options.allowApproximate) {
         return { ok: false, error: `No ${options.locale} voice on this phone — install it in Android settings.` };
       }
       const chosen = options.voiceUri ? status.voices.find((voice) => voice.uri === options.voiceUri) : undefined;
@@ -228,16 +244,19 @@ export async function speak(text: string, options: SpeakOptions): Promise<{ ok: 
       }
 
       speaking = true;
+      // With no voice for the language, the engine reads the text in its default
+      // voice. That is audibly wrong and still better than a silent button, so it
+      // happens only when the learner asked for it, and the caller is told.
       await TextToSpeech.speak({
         text,
-        lang: options.locale,
+        ...(status.supported ? { lang: options.locale } : {}),
         rate,
         pitch: 1,
         volume: 1,
         ...(chosen?.index !== undefined ? { voice: chosen.index } : {}),
         category: "playback",
       });
-      return { ok: true };
+      return { ok: true, ...(status.supported ? {} : { approximate: true }) };
     } catch (error) {
       speaking = false;
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
@@ -253,9 +272,13 @@ export async function speak(text: string, options: SpeakOptions): Promise<{ ok: 
   utterance.lang = options.locale;
   utterance.rate = rate;
   const available = synth.getVoices();
-  const chosen =
+  const exact =
     available.find((voice) => voice.voiceURI === options.voiceUri) ??
     available.find((voice) => voice.lang.toLowerCase().startsWith(options.locale.slice(0, 2).toLowerCase()));
+  if (!exact && !options.allowApproximate) {
+    return { ok: false, error: `This device has no ${options.locale} voice.` };
+  }
+  const chosen = exact ?? available[0];
   if (chosen) utterance.voice = chosen;
   utterance.onend = () => {
     utteranceRef = null;
@@ -268,7 +291,7 @@ export async function speak(text: string, options: SpeakOptions): Promise<{ ok: 
   // exactly like "it spoke two words and stopped".
   utteranceRef = utterance;
   synth.speak(utterance);
-  return { ok: true };
+  return { ok: true, ...(exact ? {} : { approximate: true }) };
 }
 
 export function isSpeaking(): boolean {

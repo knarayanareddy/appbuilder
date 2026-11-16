@@ -184,6 +184,19 @@ describe("look and feel", () => {
     await waitFor(() => expect(document.documentElement.dataset.theme).toBe("dark"));
   });
 
+  it("offers a wrong voice rather than silence, and remembers the choice", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+
+    // jsdom has no Dutch voice, so the card lands on the "missing" state.
+    const fallback = await screen.findByRole("switch", { name: "English voice as a last resort" });
+    expect(fallback).toHaveAttribute("aria-checked", "true");
+    await user.click(fallback);
+    await waitFor(async () => expect((await loadSnapshot()).settings.approximateVoice).toBe(false));
+  });
+
   it("turns sound and haptics off and on", async () => {
     const user = userEvent.setup();
     render(<App />);

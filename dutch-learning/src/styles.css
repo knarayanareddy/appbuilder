@@ -447,6 +447,12 @@ h2.section {
   border-color: rgba(139, 92, 246, 0.35);
 }
 
+.pill.gold {
+  color: #ffd08a;
+  background: rgba(255, 198, 75, 0.14);
+  border-color: rgba(255, 198, 75, 0.38);
+}
+
 .pill.rose {
   color: #ffd4db;
   background: rgba(255, 93, 115, 0.16);
@@ -1421,6 +1427,10 @@ body[data-theme="light"] {
 
 [data-theme="light"] .pill.primary {
   color: #a8400f;
+}
+
+[data-theme="light"] .pill.gold {
+  color: #8a5a00;
 }
 
 [data-theme="light"] .pill.green {

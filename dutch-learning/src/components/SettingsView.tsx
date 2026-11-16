@@ -165,7 +165,13 @@ export function SettingsView({
         </div>
       </Card>
 
-      <SectionTitle right={<Pill tone={speech?.supported ? "green" : "rose"}>{speech?.supported ? "ready" : "missing"}</Pill>}>
+      <SectionTitle
+        right={
+          <Pill tone={speech?.supported ? "green" : settings.approximateVoice ? "gold" : "rose"}>
+            {speech?.supported ? "ready" : settings.approximateVoice ? "approximate" : "missing"}
+          </Pill>
+        }
+      >
         Voice · {language.name}
       </SectionTitle>
       <Card>
@@ -217,8 +223,8 @@ export function SettingsView({
         ) : (
           <div className="stack">
             <p className="small">
-              <b>No {language.name} voice installed.</b> Android falls back to an English voice reading {language.name} —
-              which is exactly how pronunciation gets butchered.
+              <b>No {language.name} voice installed.</b> The {language.name} voice is a Google text-to-speech pack: one
+              download for the whole phone, offline afterwards, and not something an app is allowed to install for you.
             </p>
             <div className="row">
               <Button size="sm" variant="primary" icon="download" onClick={onOpenVoiceInstall}>
@@ -228,11 +234,32 @@ export function SettingsView({
                 Check again
               </Button>
             </div>
+
+            <div className="list-row">
+              <span className="list-row-icon">
+                <Icon name="speaker" size={18} />
+              </span>
+              <div className="grow">
+                <p className="small" style={{ fontWeight: 800 }}>
+                  English voice as a last resort
+                </p>
+                <p className="tiny dim">
+                  Dutch read with an English voice is audibly wrong — the vowels mostly — but it beats a button that
+                  says nothing. Off means the app stays silent and tells you why instead.
+                </p>
+              </div>
+              <Toggle
+                on={settings.approximateVoice}
+                label="English voice as a last resort"
+                onChange={() => update({ approximateVoice: !settings.approximateVoice })}
+              />
+            </div>
+
             <p className="tiny dim">
-              The {language.name} voice is a Google text-to-speech pack, not app data — Android installs it once and
-              every app on the phone uses it, offline afterwards. Settings → System → Languages &amp; input →
-              Text-to-speech output → Google → Install voice data.
-              {isNative() ? "" : " In a browser the voices come from Chrome, so this app cannot install them."}
+              Settings → System → Languages &amp; input → Text-to-speech output → Google → Install voice data →{" "}
+              {language.name}. Any engine works, including offline ones that bring their own Dutch voices — the app
+              uses whichever engine Android is set to.
+              {isNative() ? "" : " In a browser the voices come from Chrome, which this app cannot install them into."}
             </p>
           </div>
         )}

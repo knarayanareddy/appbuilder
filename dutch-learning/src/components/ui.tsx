@@ -58,7 +58,7 @@ export function Stat({ value, label }: { value: string | number; label: string }
   );
 }
 
-export function Pill({ children, tone }: { children: ReactNode; tone?: "primary" | "green" | "violet" | "rose" }) {
+export function Pill({ children, tone }: { children: ReactNode; tone?: "primary" | "green" | "violet" | "rose" | "gold" }) {
   return <span className={tone ? `pill ${tone}` : "pill"}>{children}</span>;
 }
 

@@ -51,6 +51,8 @@ export function normaliseSettings(raw: Partial<Settings> | undefined): Settings 
     theme: raw?.theme === "dark" || raw?.theme === "light" || raw?.theme === "system" ? raw.theme : DEFAULT_SETTINGS.theme,
     sound: typeof raw?.sound === "boolean" ? raw.sound : DEFAULT_SETTINGS.sound,
     haptics: typeof raw?.haptics === "boolean" ? raw.haptics : DEFAULT_SETTINGS.haptics,
+    approximateVoice:
+      typeof raw?.approximateVoice === "boolean" ? raw.approximateVoice : DEFAULT_SETTINGS.approximateVoice,
     // A saved settings blob without the flag means an install from before the intro
     // existed: those learners have already found their way around, so do not greet
     // them with the welcome screens.

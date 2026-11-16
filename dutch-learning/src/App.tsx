@@ -88,6 +88,7 @@ export default function App() {
   }, [locale]);
 
   const voiceHinted = useRef(false);
+  const approximateHinted = useRef(false);
 
   const checkVoice = useCallback(
     async () => {
@@ -109,7 +110,18 @@ export default function App() {
     async (text: string, speakLocale = locale, key?: string) => {
       const rate = snapshot?.settings.rate ?? 1;
       if (key && (await playBundled(key, rate))) return;
-      const result = await speak(text, { locale: speakLocale, rate, voiceUri: snapshot?.settings.voice ?? null });
+      const result = await speak(text, {
+        locale: speakLocale,
+        rate,
+        voiceUri: snapshot?.settings.voice ?? null,
+        allowApproximate: snapshot?.settings.approximateVoice ?? true,
+      });
+      if (result.ok && result.approximate) {
+        if (!approximateHinted.current) {
+          approximateHinted.current = true;
+          showToast("English voice reading Dutch — install the Dutch voice for real pronunciation");
+        }
+      }
       if (!result.ok) {
         setSpeech({ locale: speakLocale, supported: false, voices: [], error: result.error });
         // Say it once per session instead of leaving a silent tap unexplained.
@@ -119,7 +131,7 @@ export default function App() {
         }
       }
     },
-    [locale, snapshot?.settings.rate, snapshot?.settings.voice, showToast],
+    [locale, snapshot?.settings.rate, snapshot?.settings.voice, snapshot?.settings.approximateVoice, showToast],
   );
 
   const playItem = useCallback((item: SessionItem) => void play(item.item.text, item.ttsLocale, item.key), [play]);

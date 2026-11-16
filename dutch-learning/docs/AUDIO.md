@@ -56,22 +56,51 @@ Those cards sound identical on every phone, with no dependence on the device's s
 engine. The app shows the ratio in **Settings → Voice → Recorded narration**, so the
 coverage is never a guess: *"Recorded narration · 20 of 121"*.
 
-## Why the rest uses the phone's voice — and what the "Dutch pack" is
+## Three ways this app can have a voice
 
-Android's Dutch voice is **not app data**. It is a voice pack inside the Google
-text-to-speech engine: one download, stored by the system, shared by every app, and
-offline once installed. Three consequences matter here:
+Recording every sentence does not scale — the course is 121 sentences today and could be
+any number tomorrow, in any language. So recordings are one layer, not the plan.
 
-1. An app cannot install it silently. Android shows the install prompt and the user
-   confirms; that is what `TextToSpeech.openInstall()` opens (`Settings → Voice →
-   Install the voice`).
-2. The same pack fixes every other app, so it is worth installing even if you never use
-   this one.
-3. Without it, Android does not go silent — it reads Dutch with an English voice, which
-   is worse than silence for pronunciation. That is why the app checks before it speaks.
+| Route | Coverage | Quality | Cost | Can the app do it alone? |
+| --- | --- | --- | --- | --- |
+| **Bundled recordings** | only the sentences we record | same voice on every phone | ~20 KB per sentence in the APK | yes — but it is the thing that does not scale |
+| **The phone's speech engine** | every sentence, every imported module, unlimited | depends on the installed pack | 0 MB | **no** — Android installs voice data, not apps |
+| **An on-device neural engine** (sherpa-onnx / Piper) | unlimited, offline | studio-grade, one voice forever | ~64 MB for a Dutch voice (`vits-piper-nl_NL-*`) | only as a native plugin plus a model download |
 
-If the pack is missing, the app cannot be made to sound right by any setting inside it.
-What it *can* do is stop depending on the pack, which is what recording the course does.
+### The phone's engine is the general answer
+
+The app already speaks every sentence it has, forever, through Android's TTS engine; the
+recordings are just a better-sounding fallback for the first units. Nothing limits the app
+to 121 sentences — 1 000 imported sentences get 1 000 spoken sentences.
+
+The catch is the **voice pack**, and it is not app data:
+
+1. It lives inside a text-to-speech engine (usually Google's), is downloaded once, is
+   shared by every app on the phone, and works offline afterwards.
+2. No app can install it silently — Android shows the prompt and the user confirms. That
+   is what `TextToSpeech.openInstall()` opens, and if the engine has no installer the app
+   hands over to the engine's Play Store page.
+3. Without it Android does not go silent; it reads Dutch in the default (often English)
+   voice. That is why the app checks first.
+
+### Sound versus silence: the English fallback
+
+A learner can explicitly allow "English voice as a last resort"
+(`settings.approximateVoice`, on by default). The app then speaks with whatever voice the
+engine has and marks the result as approximate: one toast the first time, and a gold
+`approximate` pill in Settings → Voice instead of a red `missing` one. Turn it off and the
+app stays silent and says why. It is a deliberate trade — the vowels are wrong, and
+hearing wrong vowels is still better for reading practice than a button that does nothing
+— but it is never silent about being approximate.
+
+### If even that is not enough
+
+Any TTS engine Android is set to will be used, including third-party offline engines that
+ship their own Dutch neural voices (sherpa-onnx builds, RHVoice). Nothing in the app assumes
+Google. A future build can bundle that path directly — a ~64 MB Piper Dutch model plus a
+native plugin would give one studio voice for unlimited sentences, with no per-sentence
+recording ever again. That is the honest "download a Dutch pack for this app" answer; it is
+a native change, so it needs a rebuild and a model download of that size.
 
 ## Recording the rest, in batches
 

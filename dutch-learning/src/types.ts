@@ -101,6 +101,8 @@ export interface Settings {
   theme: Theme;
   sound: boolean;
   haptics: boolean;
+  /** Let a non-Dutch voice read Dutch rather than staying silent. */
+  approximateVoice: boolean;
   /** False until the intro has been seen once. */
   onboarded: boolean;
 }
@@ -115,6 +117,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   sound: true,
   haptics: true,
+  approximateVoice: true,
   onboarded: false,
 };
 
