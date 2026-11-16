@@ -8,6 +8,7 @@ import { applyTheme } from "@/lib/theme";
 import { configureFeedback } from "@/lib/sound";
 import { languageFor } from "@/lib/languages";
 import {
+  forgetVoice,
   inspectVoice,
   loadAudioIndex,
   openVoiceInstall,
@@ -86,6 +87,18 @@ export default function App() {
     };
   }, [locale]);
 
+  const voiceHinted = useRef(false);
+
+  const checkVoice = useCallback(
+    async () => {
+      forgetVoice();
+      const status = await inspectVoice(locale, { refresh: true });
+      setSpeech(status);
+      return status;
+    },
+    [locale],
+  );
+
   const showToast = useCallback((message: string) => {
     setToast(message);
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
@@ -99,9 +112,14 @@ export default function App() {
       const result = await speak(text, { locale: speakLocale, rate, voiceUri: snapshot?.settings.voice ?? null });
       if (!result.ok) {
         setSpeech({ locale: speakLocale, supported: false, voices: [], error: result.error });
+        // Say it once per session instead of leaving a silent tap unexplained.
+        if (!voiceHinted.current) {
+          voiceHinted.current = true;
+          showToast("No Dutch voice on this phone — Settings → Voice → Install");
+        }
       }
     },
-    [locale, snapshot?.settings.rate, snapshot?.settings.voice],
+    [locale, snapshot?.settings.rate, snapshot?.settings.voice, showToast],
   );
 
   const playItem = useCallback((item: SessionItem) => void play(item.item.text, item.ttsLocale, item.key), [play]);
@@ -225,7 +243,7 @@ export default function App() {
           onFinish={(patch) => void finishIntro(patch)}
           onPlacement={(patch) => void startPlacement(patch)}
           onInstallVoice={() => void openVoiceInstall()}
-          onCheckVoice={() => void inspectVoice(locale).then(setSpeech)}
+          onCheckVoice={() => void checkVoice()}
         />
       </div>
     );
@@ -345,8 +363,8 @@ export default function App() {
           onAddModule={addModule}
           onRemoveModule={removeModule}
           onTestVoice={() => void play("De fiets staat achter het station.")}
-          onCheckVoice={() => void inspectVoice(locale).then(setSpeech)}
-          onOpenVoiceInstall={() => void openVoiceInstall()}
+          onCheckVoice={() => void checkVoice()}
+          onOpenVoiceInstall={() => void openVoiceInstall().then(() => checkVoice())}
           onReplayIntro={() => void replayIntro()}
           onToast={showToast}
         />

@@ -3,10 +3,10 @@ import type { Module, Settings, Snapshot } from "@/types";
 import { backupFileName, readTextFile, saveBackupFile } from "@/lib/backup";
 import { exportSnapshot, importSnapshot, resetAll } from "@/lib/repo";
 import { countItems, validateModule, type Registry } from "@/lib/module";
-import type { SpeechStatus } from "@/lib/speech";
+import { countRecorded, isNative, type SpeechStatus } from "@/lib/speech";
 import { LANGUAGES } from "@/lib/languages";
 import { Icon } from "./icons";
-import { Button, Card, Pill, SectionTitle, Toggle } from "./ui";
+import { Bar, Button, Card, Pill, SectionTitle, Toggle } from "./ui";
 
 export function SettingsView({
   registry,
@@ -51,6 +51,15 @@ export function SettingsView({
   const update = (patch: Partial<Settings>) => {
     void onSettings({ ...settings, ...patch });
   };
+
+  const keys = useMemo(
+    () =>
+      registry.modules.flatMap((module) =>
+        module.units.flatMap((unit) => unit.items.map((item) => `${module.id}/${unit.id}/${item.id}`)),
+      ),
+    [registry],
+  );
+  const recorded = useMemo(() => countRecorded(keys), [keys]);
 
   async function backUp() {
     setBusy(true);
@@ -160,6 +169,23 @@ export function SettingsView({
         Voice · {language.name}
       </SectionTitle>
       <Card>
+        <div className="list-row">
+          <span className="list-row-icon">
+            <Icon name="speaker" size={18} />
+          </span>
+          <div className="grow">
+            <p className="small" style={{ fontWeight: 800 }}>
+              Recorded narration · {recorded} of {keys.length}
+            </p>
+            <p className="tiny dim">
+              {recorded === keys.length
+                ? "Every sentence has a real Dutch recording, so the phone's voice is only a backup."
+                : "A real Dutch voice, identical on every phone, with no install needed. The rest is spoken by the phone's Dutch voice, which Android keeps as a separate download."}
+            </p>
+            <Bar value={recorded} max={keys.length || 1} thin green />
+          </div>
+        </div>
+
         {speech === null ? (
           <p className="small muted">Checking what this device can speak…</p>
         ) : speech.supported ? (
@@ -203,8 +229,10 @@ export function SettingsView({
               </Button>
             </div>
             <p className="tiny dim">
-              Android: Settings → System → Languages &amp; input → Text-to-speech output → Google → Install voice data →{" "}
-              {language.name}.
+              The {language.name} voice is a Google text-to-speech pack, not app data — Android installs it once and
+              every app on the phone uses it, offline afterwards. Settings → System → Languages &amp; input →
+              Text-to-speech output → Google → Install voice data.
+              {isNative() ? "" : " In a browser the voices come from Chrome, so this app cannot install them."}
             </p>
           </div>
         )}

@@ -190,6 +190,9 @@ describe("look and feel", () => {
 
     await user.click(await screen.findByRole("button", { name: "Settings" }));
 
+    // The voice card states coverage instead of implying every sentence is recorded.
+    expect(await screen.findByText(/Recorded narration/)).toBeInTheDocument();
+
     const sound = await screen.findByRole("switch", { name: "Sound" });
     expect(sound).toHaveAttribute("aria-checked", "true");
     await user.click(sound);

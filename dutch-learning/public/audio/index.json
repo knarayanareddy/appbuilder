@@ -1,4 +1,13 @@
 [
+  "nl-basis/boodschappen/s011",
+  "nl-basis/boodschappen/s012",
+  "nl-basis/boodschappen/s013",
+  "nl-basis/boodschappen/s014",
+  "nl-basis/boodschappen/s015",
+  "nl-basis/boodschappen/s016",
+  "nl-basis/boodschappen/s017",
+  "nl-basis/boodschappen/s018",
+  "nl-basis/boodschappen/s019",
   "nl-basis/kennismaking/s001",
   "nl-basis/kennismaking/s002",
   "nl-basis/kennismaking/s003",
@@ -8,5 +17,6 @@
   "nl-basis/kennismaking/s007",
   "nl-basis/kennismaking/s008",
   "nl-basis/kennismaking/s009",
-  "nl-basis/kennismaking/s010"
+  "nl-basis/kennismaking/s010",
+  "nl-basis/wonen/s020"
 ]

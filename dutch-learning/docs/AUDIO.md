@@ -44,12 +44,42 @@ npm run build                         # pick up new files
 
 ## What is recorded today
 
-Unit 1 (*Kennismaking*, ten sentences) is recorded with a native Dutch neural voice —
-the one you picked from the two auditions — one clip per sentence. Those ten cards now
-sound identical on every phone, with no dependence on the device's speech engine.
+Twenty of the 121 sentences have a native Dutch neural voice — one clip per sentence:
 
-Every other sentence falls back to the phone's own Dutch voice, which is good when the
-voice data is installed and wrong when it is not (the app checks, and says so). The rest
-of the course can be recorded in batches: ten clips per pass, `npm run audio:index`,
-rebuild, ship. Say which unit and it happens.
+| Unit | Items | Recording |
+| --- | --- | --- |
+| Kennismaking | `s001`–`s010` | 10 of 10 |
+| Boodschappen | `s011`–`s019` | 9 of 9 |
+| Wonen | `s020` | 1 of 11 |
 
+Those cards sound identical on every phone, with no dependence on the device's speech
+engine. The app shows the ratio in **Settings → Voice → Recorded narration**, so the
+coverage is never a guess: *"Recorded narration · 20 of 121"*.
+
+## Why the rest uses the phone's voice — and what the "Dutch pack" is
+
+Android's Dutch voice is **not app data**. It is a voice pack inside the Google
+text-to-speech engine: one download, stored by the system, shared by every app, and
+offline once installed. Three consequences matter here:
+
+1. An app cannot install it silently. Android shows the install prompt and the user
+   confirms; that is what `TextToSpeech.openInstall()` opens (`Settings → Voice →
+   Install the voice`).
+2. The same pack fixes every other app, so it is worth installing even if you never use
+   this one.
+3. Without it, Android does not go silent — it reads Dutch with an English voice, which
+   is worse than silence for pronunciation. That is why the app checks before it speaks.
+
+If the pack is missing, the app cannot be made to sound right by any setting inside it.
+What it *can* do is stop depending on the pack, which is what recording the course does.
+
+## Recording the rest, in batches
+
+Ten clips per pass is the honest rate for the current pipeline:
+
+1. generate the ten clips for the next unit in curriculum order;
+2. rename them to `nl-basis__<unit>__<item>.mp3` (double underscore, no path);
+3. `node scripts/audio-index.mjs`;
+4. `npm run build`, commit, push — the APK carries them and coverage moves.
+
+Unit 3 (*Wonen*) is next: `s021`–`s030`.

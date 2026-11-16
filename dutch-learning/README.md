@@ -57,18 +57,23 @@ buttons and still works with no files to load.
 ## Voice quality
 
 - Bundled recordings win when a sentence has one (`public/audio/`, see [docs/AUDIO.md](docs/AUDIO.md))
-  — a real Dutch voice, identical on every phone.
+  — a real Dutch voice, identical on every phone. Twenty of the 121 sentences are
+  recorded today (units 1–2 plus the first sentence of unit 3); **Settings → Voice** shows
+  the exact count, and the rest of the course is recorded in batches of ten.
 - Otherwise the phone's own engine speaks, but only after Taal checks the Dutch voice
   exists: without it, Android would read Dutch with an English voice and butcher it. When
   it is missing the app says so and offers the installer instead of playing the wrong voice.
-- Pick the voice and the speed in **Settings → Voice**.
+- Pick the voice and the speed in **Settings → Voice**. That screen also explains the
+  one thing the app cannot do for you: Android's Dutch voice is a Google text-to-speech
+  pack, installed once for the whole phone. The app opens the installer; Android makes
+  you confirm it.
 
 ## Working on it
 
 ```bash
 npm install
 npm run dev        # http://localhost:5182 — the web build is the same app
-npm run check      # typecheck + 82 tests
+npm run check      # typecheck + 85 tests
 npm run build      # static build into dist/
 node scripts/audio-index.mjs   # re-index bundled recordings
 ```
