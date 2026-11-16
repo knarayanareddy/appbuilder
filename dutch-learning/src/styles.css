@@ -354,7 +354,7 @@ h2.section {
   min-width: 40px;
   border: 0;
   border-radius: 50%;
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--label-2);
   cursor: pointer;
   transition: transform 0.16s var(--ease), background 0.16s var(--ease);
@@ -487,7 +487,7 @@ h2.section {
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--label-2);
   font-size: 14px;
   font-weight: 600;
@@ -670,7 +670,7 @@ h2.section {
 }
 
 .mode:active {
-  background: var(--surface-2);
+  background: var(--surface-3);
 }
 
 .mode-icon {
@@ -680,7 +680,7 @@ h2.section {
   height: 30px;
   min-width: 30px;
   border-radius: 9px;
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--label-2);
 }
 
@@ -688,7 +688,7 @@ h2.section {
 .mode-icon.violet,
 .mode-icon.teal,
 .mode-icon.rose {
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--label-2);
 }
 
@@ -750,7 +750,7 @@ h2.section {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--label-2);
   font-size: 15px;
   font-weight: 600;
@@ -875,7 +875,7 @@ input[type="search"] {
   font: inherit;
   font-size: 17px;
   outline: none;
-  box-shadow: inset 0 0 0 1px transparent;
+  box-shadow: inset 0 0 0 1px var(--separator);
   transition: box-shadow 0.16s var(--ease);
   appearance: none;
 }
@@ -1052,7 +1052,7 @@ textarea:focus {
   height: 34px;
   min-width: 34px;
   border-radius: 9px;
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--label-2);
 }
 
@@ -1135,7 +1135,7 @@ input[type="range"]::-moz-range-thumb {
   gap: 2px;
   padding: 3px;
   border-radius: var(--r-sm);
-  background: var(--surface-2);
+  background: var(--surface-3);
 }
 
 .segmented button {
@@ -1322,8 +1322,10 @@ input[type="range"]::-moz-range-thumb {
 
   --bg: #f2f2f7;
   --surface: #ffffff;
-  --surface-2: #f2f2f7;
-  --surface-3: #e4e4ea;
+  /* Controls sit on both the grey canvas and white cards in light mode, so their
+     fill is a step below both — otherwise an answer option disappears. */
+  --surface-2: #ffffff;
+  --surface-3: #e6e6ec;
   --label: #000000;
   --label-2: rgba(60, 60, 67, 0.82);
   --label-3: rgba(60, 60, 67, 0.72);
