@@ -372,6 +372,27 @@ function patchGradle(file) {
   return true;
 }
 
+/**
+ * Vosk ships Kaldi native libraries for four ABIs. A sideloaded app only ever runs on an
+ * ARM phone, so the x86 copies are ~20 MB of dead weight in the download.
+ */
+function restrictAbis(file) {
+  let text = readFileSync(file, "utf8");
+  if (text.includes("abiFilters")) {
+    return false;
+  }
+  const at = text.indexOf("defaultConfig {");
+  if (at === -1) {
+    return false;
+  }
+  const insertAt = text.indexOf("\n", at) + 1;
+  const line = "        // Phones, not emulators: drops the x86 Kaldi libraries from the APK.\n" +
+    "        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }\n";
+  text = text.slice(0, insertAt) + line + text.slice(insertAt);
+  writeFileSync(file, text);
+  return true;
+}
+
 function main() {
   if (!existsSync(join(root, "app"))) {
     throw new Error(`${root}: not an Android project — run \`npx cap add android\` first`);
@@ -382,10 +403,12 @@ function main() {
   writeFileSync(join(javaDir, "MainActivity.java"), MAIN_ACTIVITY);
 
   const patched = patchGradle(join(root, "app/build.gradle"));
+  const trimmed = restrictAbis(join(root, "app/build.gradle"));
   const hasModel = existsSync(assetsDir);
 
   console.log(`wrote ${join(javaDir, "DutchSpeechPlugin.java")}`);
   console.log(patched ? "added vosk-android to app/build.gradle" : "vosk-android already in app/build.gradle");
+  console.log(trimmed ? "limited native libraries to arm64-v8a and armeabi-v7a" : "ABIs already configured");
   console.log(hasModel ? "model found in assets/model-nl" : "no model in assets/model-nl — the app will hide the microphone");
 }
 
