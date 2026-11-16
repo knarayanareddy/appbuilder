@@ -25,6 +25,7 @@ it for every app, not just this one.
 | **Learn** | Today's plan, plus three unlimited modes: **Practise more** (keeps serving whatever is weakest), **Quiz me** (tests without touching the schedule) and **Mistakes**. Tap any unit to drill just that unit. |
 | **Flashcards** | A flip deck for review: Dutch on the front, tap to reveal English, then grade it **Again** or **Good**. Both answers feed the same scheduler, and because you grade yourself those attempts never flatter the recall figure. |
 | **Pictures** | Optional picture cues in the module data (`image`), shown while a sentence is first met and in Words. Four of the built-in sentences use one; the app is complete without any. |
+| **Speaking** | On `produce` cards the APK can listen: say the sentence and an on-device Dutch recogniser checks the words actually came out. It is a check, not a replacement for typing — a miss shows what it heard and leaves the card open. The browser build has no microphone; the phone never uploads audio. |
 | **Six drill types** | reading with audio, gap-fill, multiple choice, word-bank sentence building, dictation, production from English. A failure drops a sentence one rung; success moves it up. |
 | **Words** | every sentence, searchable, with audio, literal gloss and grammar tags. |
 | **Progress** | true recall (reviews only), sentences known, per-unit coverage, day streak, and the grammar tags you keep missing. |
@@ -86,6 +87,27 @@ buttons and still works with no files to load.
 - The catch that no app can fix: the Dutch voice is a Google text-to-speech pack, one
   download for the whole phone, installed by you, not by the app. Any engine works,
   including third-party offline ones with their own Dutch voices.
+### Speaking, and what the phone can actually hear
+
+- The APK carries `vosk-model-small-nl-0.22` (39 MB, Apache-2.0) in its assets. The first
+  time you tap **Say it**, it unpacks the model into the app's own storage — a few seconds,
+  once — and from then on listening starts immediately. There is no download at runtime.
+- Recognition runs entirely on the phone, in the app process. No audio is stored or sent
+  anywhere; the plugin closes the microphone the moment the card is answered, changed, or
+  six seconds pass.
+- What it checks is **whether the expected words came out**, in order, allowing for the
+  recogniser's own mistakes. `vosk-model-small-nl` has a word error rate of roughly a
+  quarter on clean speech, so scoring is deliberately forgiving: near-perfect scores pass,
+  a partly-heard sentence passes as *almost* (which is honest — it is not proof), and a
+  genuinely different sentence does nothing at all to the card.
+- What it does **not** do: judge your vowels, your `ui` versus `u`, or your sentence
+  rhythm. For that you need a bigger model (300+ MB) or a cloud service, and both trade
+  away offline-first. Typing remains the way to prove you can produce a sentence; speaking
+  is a nudge to say it out loud.
+- If the model, the microphone or the permission is missing, the card simply has no
+  microphone — typed practice is untouched. **Settings → Voice → Speech check** turns it
+  off entirely.
+
 - Pick the voice and the speed in **Settings → Voice**. That screen also explains the
   one thing the app cannot do for you: Android's Dutch voice is a Google text-to-speech
   pack, installed once for the whole phone. The app opens the installer; Android makes
@@ -96,7 +118,7 @@ buttons and still works with no files to load.
 ```bash
 npm install
 npm run dev        # http://localhost:5182 — the web build is the same app
-npm run check      # typecheck + 96 tests
+npm run check      # typecheck + 109 tests
 npm run build      # static build into dist/
 node scripts/audio-index.mjs   # re-index bundled recordings
 ```
@@ -112,11 +134,16 @@ node scripts/audio-index.mjs   # re-index bundled recordings
 | `src/components/Onboarding.tsx` | First run: intro, level question, voice check |
 | `src/components/unitArt.tsx` | One inline-SVG scene per unit, no image files |
 | `src/lib/sound.ts` | Synthesised feedback tones + native haptics (both optional) |
+| `src/lib/pronounce.ts` | Word-level scoring of what the phone heard — pure, and tested |
+| `src/lib/asr.ts` | The speech bridge: probes the plugin, never fakes a result |
+| `scripts/android-speech.mjs` | Writes the native speech plugin into the generated Android project |
 | `src/lib/theme.ts` | `data-theme` painting, including live system-follow |
 | `docs/` | Module format, AI authoring prompt, audio pipeline |
 | `DESIGN.md` | The full design: evidence, curriculum, traps, milestones |
 
 The APK is built by `.github/workflows/taal.yml` on every push and published to the same
-release tag, so the install link never changes. Signing is pinned in
+release tag, so the install link never changes. That workflow also downloads the Dutch
+speech model (39 MB) and adds the microphone plugin; if the download fails the build still
+ships, without the speech check. Signing is pinned in
 [keystore/README.md](keystore/README.md) — that is what lets a new APK install over the old
 one without wiping your progress.

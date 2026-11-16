@@ -82,8 +82,26 @@ jobs:
 
       # Without this the phone's speech engine is invisible to the app and every
       # card is silent. See scripts/patch-android-manifest.py.
-      - name: Declare the text-to-speech intent
+      - name: Declare the text-to-speech intent and microphone
         run: python3 scripts/patch-android-manifest.py
+
+      # The 39 MB Dutch model is downloaded here, never committed: it is a release
+      # artifact of another project. If the download fails the build still ships — the
+      # app hides the microphone when the model is absent, and typed practice is intact.
+      - name: Fetch the Dutch speech model
+        continue-on-error: true
+        run: |
+          mkdir -p android/app/src/main/assets
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/model.zip" \
+            https://alphacephei.com/vosk/models/vosk-model-small-nl-0.22.zip
+          unzip -q "$RUNNER_TEMP/model.zip" -d "$RUNNER_TEMP/model"
+          mv "$RUNNER_TEMP/model/vosk-model-small-nl-0.22" android/app/src/main/assets/model-nl
+          du -sh android/app/src/main/assets/model-nl
+
+      # Writes the local Capacitor plugin and its Gradle dependencies into the generated
+      # project. Idempotent; see scripts/android-speech.mjs.
+      - name: Add on-device speech recognition
+        run: node scripts/android-speech.mjs
 
       - name: Accept SDK licences
         run: |

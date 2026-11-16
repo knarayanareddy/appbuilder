@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Module, Settings, Snapshot } from "@/types";
 import { backupFileName, readTextFile, saveBackupFile } from "@/lib/backup";
 import { exportSnapshot, importSnapshot, resetAll } from "@/lib/repo";
 import { countItems, validateModule, type Registry } from "@/lib/module";
 import { countRecorded, isNative, type SpeechStatus } from "@/lib/speech";
+import { asrStatus, type AsrState } from "@/lib/asr";
 import { LANGUAGES } from "@/lib/languages";
 import { Icon } from "./icons";
 import { Bar, Button, Card, Pill, SectionTitle, Toggle } from "./ui";
@@ -38,6 +39,17 @@ export function SettingsView({
   const [errors, setErrors] = useState<string[]>([]);
   const [paste, setPaste] = useState("");
   const [busy, setBusy] = useState(false);
+  const [asr, setAsr] = useState<AsrState>("unsupported");
+
+  useEffect(() => {
+    let alive = true;
+    void asrStatus().then((state) => {
+      if (alive) setAsr(state);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [confirmReset, setConfirmReset] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const moduleInput = useRef<HTMLInputElement>(null);
@@ -284,6 +296,27 @@ export function SettingsView({
           <Button size="sm" onClick={onTestVoice}>
             Test
           </Button>
+        </div>
+
+        <div className="list-row">
+          <span className="list-row-icon">
+            <Icon name="target" size={18} />
+          </span>
+          <div className="grow">
+            <p className="small" style={{ fontWeight: 800 }}>
+              Speech check
+            </p>
+            <p className="tiny dim">
+              {asr === "unsupported"
+                ? "Not in this build: a browser cannot listen. The APK carries a 39 MB Dutch model and checks your vowels on the phone."
+                : "Say a production card out loud and a Dutch model on the phone checks it. A miss never marks the card wrong."}
+            </p>
+          </div>
+          <Toggle
+            on={settings.speechCheck}
+            label="Speech check"
+            onChange={() => update({ speechCheck: !settings.speechCheck })}
+          />
         </div>
 
         <div className="list-row">

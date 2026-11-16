@@ -503,9 +503,60 @@ worth writing down because it decides what gets added next.
 - A "study mode" that just shows cards forever. Recognition feels productive and isn't.
 
 **What would genuinely improve the combination next,** in order of expected gain per
-megabyte: (1) output practice with constrained ASR — `vosk-model-small-nl-0.22` is 39 MB,
-Apache-2.0, and would let "say it out loud" actually check the vowels; (2) listening in
+megabyte: (1) output practice with constrained ASR — now built, see §20, and the honest
+verdict is that it checks words, not vowels; (2) listening in
 noise and at natural speed, which is what the exam actually tests; (3) more recorded audio,
 which is already the established batch process; (4) pictures, for the subset of concrete
 nouns where the image narrows meaning — the field is now there, so this is content work,
 not engineering.
+
+## 20. Speaking: on-device recognition, and the limits that kept it honest
+
+The `produce` rung always had a hole in it. Dictation proves you can hear a sentence,
+cloze proves you know the word, but "produce this from the English" only ever proved you
+could *type* it — which is not the exam, and not the point. The cheapest real fix was to
+let the phone listen.
+
+**Why Vosk and not the Web Speech API.** The WebView's `SpeechRecognition` is Chrome's,
+which means it can send audio to Google's servers and, on Android, is occasionally not
+present at all. `vosk-model-small-nl-0.22` (39 MB, Apache-2.0) runs in-process: no
+network permission, no vendor account, nothing to be switched off. Offline-first was the
+whole premise, so the model has to be in the APK.
+
+**Where it lives.** A ~300-line local Capacitor plugin (`scripts/android-speech.mjs`
+writes it into the generated project on every build, because the native project is a
+build artifact). The model is fetched by CI, never committed. Vosk cannot read a
+compressed asset, so the first `Say it` unpacks assets → the app's files directory once,
+marked with a file; later launches load in under a second. The microphone is opened for at
+most six seconds, closed on answer, on card change, and on unmount.
+
+**Scoring is pure and dumb on purpose** (`src/lib/pronounce.ts`, nine tests). Normalise
+(lowercase, strip punctuation and `de/het`-level filler noise), compare word arrays with
+Levenshtein, and score `1 - (substitutions + deletions + insertions) / target.length`.
+`≥ 0.95` is *good*, `≥ 0.55` is *almost*, anything else is a *miss*. The thresholds are
+deliberately generous because a 40 MB model mishears roughly a quarter of clean words;
+a stricter threshold would fail correct speech and destroy trust in the check.
+
+**The failure contract, which is the actual design.** A recogniser that cannot run must
+cost nothing:
+
+- a miss **never** marks the card wrong — it shows *Heard: "…"* and leaves the card open,
+  because a small model's miss is not evidence of a bad accent;
+- *almost* grades the card correct with the `almost` flag, the same flag the typing
+  tolerance path uses, so the scheduler hears "you probably can, prove it again sooner";
+- no model, no microphone, no permission, or the browser build → the microphone card
+  never renders, and the drill is exactly the app from before. `asr.ts` returns
+  `{heard: "", ok: false}` for every failure rather than an empty success.
+
+**What it still cannot do, said plainly.** It checks *which words came out*, not *how
+they sounded*. `u` versus `ui`, long versus short vowels, stress and rhythm — a cheap
+model simply does not encode those distinctions, and grading them would be a lie dressed
+up as feedback. Free-speaking grammar checking needs a much larger model (300 MB+ and a
+language model) or a cloud API; both break the offline, no-account promise, so neither is
+here. The value it does deliver is behavioural: on the one rung where you are supposed to
+*say* something, the app now expects you to say it.
+
+**Cost.** +39 MB in the APK (≈ 4.9 MB → ≈ 44 MB), a one-time unpack on first use, and a
+`RECORD_AUDIO` permission that is requested only when the learner taps *Say it* — with a
+refusal just hiding the button. **Settings → Voice → Speech check** turns the whole thing
+off for anyone who would rather just type.

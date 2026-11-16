@@ -109,6 +109,8 @@ export interface Settings {
   haptics: boolean;
   /** Let a non-Dutch voice read Dutch rather than staying silent. */
   approximateVoice: boolean;
+  /** Offer the microphone check on production cards, where the build has the model. */
+  speechCheck: boolean;
   /** False until the intro has been seen once. */
   onboarded: boolean;
 }
@@ -124,6 +126,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: true,
   haptics: true,
   approximateVoice: true,
+  speechCheck: true,
   onboarded: false,
 };
 

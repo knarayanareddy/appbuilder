@@ -13,6 +13,8 @@ import {
   splitWords,
 } from "@/lib/text";
 import { feedbackComplete, feedbackCorrect, feedbackWrong } from "@/lib/sound";
+import { asrStart, asrState, asrStatus, asrStop, type AsrState } from "@/lib/asr";
+import { scoreSpeech } from "@/lib/pronounce";
 import { Icon, type IconName } from "./icons";
 import { Button, Card, Chip, Empty, IconButton, ItemImage, Option, Speaker } from "./ui";
 
@@ -58,6 +60,7 @@ export function SessionView({
   pool,
   mode,
   autoPlay,
+  speechCheck,
   onAnswer,
   onFinish,
   onReport,
@@ -68,6 +71,7 @@ export function SessionView({
   pool: SessionPool;
   mode?: SessionMode;
   autoPlay: boolean;
+  speechCheck?: boolean;
   onAnswer: (item: SessionItem, answer: Answer, typed: string, ms: number) => Promise<void> | void;
   onFinish: (summary: SessionSummary) => void;
   onReport: (item: SessionItem) => void;
@@ -88,6 +92,35 @@ export function SessionView({
 
   const item = items[index];
   const cards = mode === "cards";
+  const [asr, setAsr] = useState<AsrState>("unsupported");
+  const [listening, setListening] = useState(false);
+  const [warming, setWarming] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    if (!speechCheck) {
+      setAsr("unsupported");
+      return;
+    }
+    void asrStatus().then((state) => {
+      if (alive) setAsr(state);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [speechCheck]);
+
+  // Never leave the microphone open behind a card change.
+  useEffect(() => {
+    if (!listening) return;
+    const stopped = window.setTimeout(() => void finishListening(), 6000);
+    return () => {
+      window.clearTimeout(stopped);
+      if (asrState() === "recording") void asrStop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listening]);
 
   useEffect(() => {
     startedAt.current = Date.now();
@@ -98,6 +131,7 @@ export function SessionView({
     setRevealed(false);
     setJudged(null);
     setPending(null);
+    setHeard(null);
   }, [index]);
 
   useEffect(() => {
@@ -186,6 +220,35 @@ export function SessionView({
     const answer = pending ?? { correct: true, almost: false };
     const typedAnswer = item.kind === "choice" ? (selected ?? "") : item.kind === "bank" ? picked.join(" ") : typed;
     await advance(answer, typedAnswer);
+  }
+
+  async function startListening() {
+    if (!item || listening) return;
+    setHeard(null);
+    // The first listen of an install unpacks 39 MB of model; say so rather than
+    // looking frozen.
+    setWarming(asrState() !== "ready");
+    setListening(true);
+    const started = await asrStart();
+    setWarming(false);
+    if (!started) {
+      setListening(false);
+      setAsr("unsupported");
+    }
+  }
+
+  async function finishListening() {
+    setListening(false);
+    const result = await asrStop();
+    if (!item || !result.ok) return;
+    const score = scoreSpeech(result.heard, item.item.text);
+    setHeard(result.heard);
+    if (score.verdict === "miss") {
+      // The microphone not hearing it is not the learner being wrong: show what was
+      // heard and leave the card open.
+      return;
+    }
+    settle({ correct: true, almost: score.verdict === "almost" }, result.heard);
   }
 
   const tokens =
@@ -377,6 +440,39 @@ export function SessionView({
             </Button>
             <span className="tiny dim">{expected.length} letters</span>
           </div>
+        </Card>
+      ) : null}
+
+      {!cards && item.kind === "produce" && asr !== "unsupported" && phase === "ask" ? (
+        <Card tight>
+          <div className="row spread">
+            <div className="grow">
+              <p className="small" style={{ fontWeight: 600 }}>
+                Or say it out loud
+              </p>
+              <p className="tiny dim">
+                {warming
+                  ? "Getting the Dutch model ready — first time only."
+                  : listening
+                    ? "Listening… tap to stop."
+                    : "Dutch speech is checked on the phone, never uploaded."}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant={listening && !warming ? "danger" : "secondary"}
+              icon={listening && !warming ? "check" : "mic"}
+              disabled={warming}
+              onClick={() => (listening ? void finishListening() : void startListening())}
+            >
+              {warming ? "Preparing" : listening ? "Stop" : "Say it"}
+            </Button>
+          </div>
+          {heard ? (
+            <p className="tiny dim" style={{ marginTop: 8 }}>
+              Heard: “{heard}”. Try again, or type it.
+            </p>
+          ) : null}
         </Card>
       ) : null}
 

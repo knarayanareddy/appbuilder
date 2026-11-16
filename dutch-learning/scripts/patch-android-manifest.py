@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Declare the text-to-speech intent and the vibration permission in the manifest that
-`cap add android` generates.
+"""Declare the text-to-speech intent plus the vibration and microphone permissions in the
+manifest that `cap add android` generates.
 
 Android 11+ filters which other apps a package may see. `TextToSpeech` binds to the
 device's speech engine through the implicit intent `android.intent.action.TTS_SERVICE`,
@@ -11,6 +11,9 @@ one Android-only failure that would make the whole product look broken.
 Haptics need `android.permission.VIBRATE`: Capacitor's Haptics plugin and the WebView's
 `navigator.vibrate` both go through the vibrator service, and without the permission the
 call is dropped without an error.
+
+The speech check needs `android.permission.RECORD_AUDIO`. It is a runtime permission, so
+the plugin asks the first time a card is spoken and a refusal just hides the microphone.
 
 Usage: python3 scripts/patch-android-manifest.py [path/to/AndroidManifest.xml]
 """
@@ -33,8 +36,10 @@ BLOCK = """<!-- Android 11+ package visibility: binding to the on-device text-to
 
 """
 
-PERMISSION = '    <uses-permission android:name="android.permission.VIBRATE" />\n\n'
-PERMISSION_NAME = "android.permission.VIBRATE"
+PERMISSIONS = (
+    "android.permission.VIBRATE",
+    "android.permission.RECORD_AUDIO",
+)
 
 DEFAULT_MANIFEST = Path(__file__).resolve().parent.parent / "android/app/src/main/AndroidManifest.xml"
 
@@ -51,9 +56,12 @@ def patch(path: Path) -> bool:
     if ACTION not in patched:
         patched = patched.replace("<application", BLOCK + "    <application", 1)
 
-    if PERMISSION_NAME not in patched:
-        anchor = "<queries>" if "<queries>" in patched else "<application"
-        patched = patched.replace(anchor, PERMISSION + "    " + anchor, 1)
+    for permission in PERMISSIONS:
+        if permission in patched:
+            continue
+        anchor = "<application"
+        line = f'    <uses-permission android:name="{permission}" />\n\n'
+        patched = patched.replace(anchor, line + "    " + anchor, 1)
 
     if patched == text:
         return False
@@ -72,7 +80,7 @@ def main(argv: list[str]) -> int:
         raise SystemExit(f"{path}: not found — run `npx cap add android` first")
 
     if patch(path):
-        print(f"patched {path}: {ACTION}, {PERMISSION_NAME}")
+        print(f"patched {path}: {ACTION}, {', '.join(PERMISSIONS)}")
     else:
         print(f"{path}: nothing to declare, already patched")
     return 0
