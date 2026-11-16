@@ -308,7 +308,7 @@ export function SettingsView({
             <p className="tiny dim">Run the welcome screens and the level question again.</p>
           </div>
           <Button size="sm" onClick={onReplayIntro}>
-            Show
+            Replay
           </Button>
         </div>
       </Card>

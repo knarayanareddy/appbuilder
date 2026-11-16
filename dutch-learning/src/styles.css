@@ -47,6 +47,7 @@
   --toast-text: #f6f7ff;
   --app-frame: linear-gradient(180deg, rgba(18, 22, 36, 0.85), rgba(8, 10, 18, 0.9));
   --art-ink: #0b0e19;
+  --edge: rgba(0, 0, 0, 0.34);
 
   color-scheme: dark;
 }
@@ -481,13 +482,13 @@ h2.section {
   font-weight: 700;
   line-height: 1.1;
   cursor: pointer;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: 0 3px 0 var(--edge);
   transition: transform 0.08s ease;
 }
 
 .chip:active {
   transform: translateY(2px);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 0 var(--edge);
 }
 
 .bank {
@@ -520,13 +521,13 @@ h2.section {
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 0 var(--edge);
   transition: transform 0.08s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
 .option:active:not(:disabled) {
   transform: translateY(2px);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 0 var(--edge);
 }
 
 .option.right {
@@ -640,13 +641,13 @@ h2.section {
   font-weight: 800;
   font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.32);
+  box-shadow: 0 4px 0 var(--edge);
   transition: transform 0.08s ease;
 }
 
 .mode:active {
   transform: translateY(2px);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.32);
+  box-shadow: 0 2px 0 var(--edge);
 }
 
 .mode-icon {
@@ -1344,6 +1345,7 @@ input[type="range"]::-moz-range-thumb {
   --toast-text: #ffffff;
   --app-frame: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 246, 253, 0.96));
   --art-ink: #ffffff;
+  --edge: rgba(20, 26, 60, 0.1);
   --shadow: 0 18px 34px -22px rgba(20, 26, 60, 0.4);
 }
 
