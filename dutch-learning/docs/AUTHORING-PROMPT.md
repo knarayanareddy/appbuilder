@@ -58,7 +58,10 @@ Rules, all of which the app checks:
 
 1. Every sentence must be something a person would actually say or hear in that
    situation. No textbook filler, no sentence written to show off a tense.
-2. `literal` is a deliberately clumsy word-for-word gloss ("how goes it with you"), not
+2. `image` is optional and should be rare: only for sentences whose meaning is a concrete
+   object or scene. Omit it for anything abstract; a picture that can be recognised
+   without reading the sentence teaches the picture instead of the language.
+3. `literal` is a deliberately clumsy word-for-word gloss ("how goes it with you"), not
    a second translation. It exists to make word order visible.
 3. Item ids are unique inside the module and never reused for a different sentence —
    progress is stored against them.

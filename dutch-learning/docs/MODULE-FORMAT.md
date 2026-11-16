@@ -62,6 +62,7 @@ just the first module, written in the same shape.
 | `literal` | optional word-for-word gloss; keep it clumsy on purpose |
 | `tags` | optional. Preferred: `v2`, `inversion`, `question`, `negation`, `modal`, `de/het`, `separable`, `participle`, `subordinate`, `time`, `formal`, `telefoon` |
 | `tip` | optional one-line note, shown when a card is missed |
+| `image` | optional picture cue: `img/fiets.jpg` (bundled in the app) or an `https://` URL. Shown while the sentence is first met and in the Words list. It is never the answer and never the only cue. |
 | `stories` | optional; each needs at least one line |
 
 Errors are reported with the unit title and item number, so a broken file tells you
@@ -84,6 +85,28 @@ with **Remove** (progress is kept, the sentences are not).
 
 **Settings → Modules → Export** writes the module back out as JSON, built-in Dutch
 included. The fastest way to make a variant is to export, rename the `id`, and edit.
+
+## Picture cues
+
+`image` is optional on any item, and the app is complete without it — most of the
+built-in course has none on purpose.
+
+```json
+{ "id": "s023", "text": "Mijn fiets staat in de schuur.", "translation": "My bike is in the shed.",
+  "image": "img/s023.jpg" }
+```
+
+Rules the validator enforces:
+
+- a **relative path** (`img/fiets.jpg`) is bundled with the app and works offline;
+- an **https URL** is allowed for imported modules — it simply will not load offline;
+- `http://`, `file://`, `javascript:` and paths containing `..` are rejected;
+- a bad or missing file is hidden rather than shown broken.
+
+Use a picture only when it *narrows* the meaning of the sentence: a concrete object, a
+place, a transaction. A photo next to "Ik begrijp het niet" teaches nothing and becomes a
+crutch: a learner can pass by recognising the picture instead of the words. When in
+doubt, leave `image` out.
 
 ## Multiple languages
 

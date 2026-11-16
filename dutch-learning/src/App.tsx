@@ -264,6 +264,7 @@ export default function App() {
       <div className="app flush">
         <SessionView
           items={queue}
+          mode={request?.mode ?? "daily"}
           pool={{
             translations: [...registry.items.values()].map((ref) => ref.item.translation),
             words: [...registry.items.values()].flatMap((ref) => ref.item.text.split(/\s+/)),

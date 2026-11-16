@@ -27,6 +27,22 @@ export interface Registry {
   legacy: Map<string, string>;
 }
 
+/**
+ * Pictures are data, like everything else. A relative path ships inside the app; an
+ * https URL is allowed for imported modules and simply will not work offline. Anything
+ * else (javascript:, http:, file:) is rejected before it can reach an <img src>.
+ */
+export function isSafeImage(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || /\s/.test(trimmed)) return false;
+  // `img/../../secret.png` is a path, not a picture.
+  if (trimmed.split("/").includes("..")) return false;
+  if (trimmed.startsWith("https://")) return true;
+  if (trimmed.startsWith("data:image/")) return true;
+  if (trimmed.startsWith("/")) return true;
+  return /^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*\.(png|jpe?g|webp|avif|svg)$/.test(trimmed);
+}
+
 export function itemKey(moduleId: string, unitId: string, itemId: string): string {
   return `${moduleId}/${unitId}/${itemId}`;
 }
@@ -142,6 +158,11 @@ export function validateModule(raw: unknown): ValidationResult {
       if (!source) errors.push(`${itemLabel}: "text" is required.`);
       if (!translation) errors.push(`${itemLabel}: "translation" is required.`);
 
+      const image = text(item.image);
+      if (image && !isSafeImage(image)) {
+        errors.push(`${itemLabel}: "image" must be a relative path like img/fiets.jpg, or an https URL.`);
+      }
+
       items.push({
         id: itemId,
         text: source,
@@ -149,6 +170,7 @@ export function validateModule(raw: unknown): ValidationResult {
         literal: text(item.literal) || undefined,
         tags: Array.isArray(item.tags) ? item.tags.map(text).filter(Boolean) : [],
         tip: text(item.tip) || undefined,
+        image: image && isSafeImage(image) ? image : undefined,
       });
     });
 

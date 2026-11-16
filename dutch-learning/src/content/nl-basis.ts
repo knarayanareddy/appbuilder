@@ -4,20 +4,23 @@ import type { Item, Module, Unit } from "@/types";
  * The built-in Dutch module. Plain data on purpose: the same shape an imported
  * module has, so nothing in the app can depend on "built-in" behaviour.
  *
- * Row order: [id, text, translation, literal?, tags?, tip?]
+ * Row order: [id, text, translation, literal?, tags?, tip?, image?]
+ * `image` is a bundled picture cue for concrete sentences; most rows have none, and the
+ * app is designed to be complete without any of them.
  * `literal` is a deliberately clumsy word-for-word gloss — "how goes it with you"
  * next to "How are you?" is how Dutch word order stops being a surprise.
  */
-type Row = [string, string, string, string?, string[]?, string?];
+type Row = [string, string, string, string?, string[]?, string?, string?];
 
 function items(rows: Row[]): Item[] {
-  return rows.map(([id, text, translation, literal, tags, tip]) => ({
+  return rows.map(([id, text, translation, literal, tags, tip, image]) => ({
     id,
     text,
     translation,
     literal,
     tags: tags ?? [],
     tip,
+    image,
   }));
 }
 
@@ -59,12 +62,12 @@ export const NL_BASIS: Module = {
     unit("boodschappen", "Boodschappen", "The supermarket, the till, and asking what things cost.", "A1",
       "*Graag* is the politeness dial: *Ik wil koffie* is blunt, *Ik wil graag koffie* is normal, and *Alstublieft* finishes the job.",
       [
-        ["s011", "Ik wil graag een kilo appels.", "I would like a kilo of apples.", "I want gladly a kilo apples.", ["modal"]],
+        ["s011", "Ik wil graag een kilo appels.", "I would like a kilo of apples.", "I want gladly a kilo apples.", ["modal"], undefined, "img/s011.jpg"],
         ["s012", "Hoeveel kost dat?", "How much does that cost?", "How-much costs that?", ["question"]],
-        ["s013", "Heeft u ook verse melk?", "Do you also have fresh milk?", "Have you also fresh milk?", ["question", "formal"]],
+        ["s013", "Heeft u ook verse melk?", "Do you also have fresh milk?", "Have you also fresh milk?", ["question", "formal"], undefined, "img/s013.jpg"],
         ["s014", "Ik doe boodschappen bij de supermarkt.", "I do my shopping at the supermarket.", "I do groceries at the supermarket.", ["v2"]],
         ["s015", "Waar kan ik de kassa vinden?", "Where can I find the checkout?", "Where can I the till find?", ["modal", "question"]],
-        ["s016", "Mag ik met de kaart betalen?", "May I pay by card?", "May I with the card pay?", ["modal", "inversion"]],
+        ["s016", "Mag ik met de kaart betalen?", "May I pay by card?", "May I with the card pay?", ["modal", "inversion"], undefined, "img/s016.jpg"],
         ["s017", "Dat is te duur.", "That is too expensive.", "That is too expensive."],
         ["s018", "Ik neem deze twee.", "I will take these two.", "I take these two."],
         ["s019", "De appels zijn in de aanbieding.", "The apples are on offer.", "The apples are in the offer.", ["de/het"]],
@@ -76,7 +79,7 @@ export const NL_BASIS: Module = {
         ["s020", "Ik huur een klein appartement.", "I rent a small apartment.", "I rent a small apartment."],
         ["s021", "Het huis heeft twee slaapkamers.", "The house has two bedrooms.", "The house has two sleep-rooms.", ["de/het"]],
         ["s022", "De keuken is naast de woonkamer.", "The kitchen is next to the living room.", "The kitchen is next-to the living-room.", ["de/het"]],
-        ["s023", "Mijn fiets staat in de schuur.", "My bike is in the shed.", "My bike stands in the shed.", ["de/het"]],
+        ["s023", "Mijn fiets staat in de schuur.", "My bike is in the shed.", "My bike stands in the shed.", ["de/het"], undefined, "img/s023.jpg"],
         ["s024", "De verwarming werkt niet.", "The heating is not working.", "The heating works not.", ["negation", "de/het"]],
         ["s025", "Ik zoek een kamer in de buurt van het centrum.", "I am looking for a room near the centre.", "I search a room in the neighbourhood of the centre.", ["de/het"]],
         ["s026", "Het raam staat open.", "The window is open.", "The window stands open.", ["de/het"]],

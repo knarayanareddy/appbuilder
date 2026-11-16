@@ -216,3 +216,30 @@ describe("look and feel", () => {
     await waitFor(async () => expect((await loadSnapshot()).settings.haptics).toBe(false));
   });
 });
+
+describe("flashcards", () => {
+  it("flips through a deck and grades itself honestly", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Flashcards" }));
+    expect(await screen.findByText("Ik heet Anna.")).toBeInTheDocument();
+    // The English stays hidden until it is asked for: this is recall, not reading.
+    expect(screen.queryByText("My name is Anna.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show answer" }));
+    expect(await screen.findByText("My name is Anna.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Good" }));
+
+    await waitFor(async () => {
+      const snapshot = await loadSnapshot();
+      expect(snapshot.attempts).toHaveLength(1);
+      expect(snapshot.attempts[0]).toMatchObject({ correct: true, kind: "study" });
+      expect(snapshot.cards).toHaveLength(1);
+    });
+
+    // The deck moved on by itself; no second tap to advance.
+    expect(await screen.findByText("Hoe gaat het met je?")).toBeInTheDocument();
+  });
+});

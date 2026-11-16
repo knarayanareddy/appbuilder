@@ -97,6 +97,13 @@ export function LearnView({
           Mistakes
           <small>fix what slipped</small>
         </button>
+        <button type="button" className="mode" aria-label="Flashcards" onClick={() => onStart({ mode: "cards" })}>
+          <span className="mode-icon">
+            <Icon name="layers" size={18} />
+          </span>
+          Flashcards
+          <small>reveal &amp; grade</small>
+        </button>
       </div>
 
       <Card tight>

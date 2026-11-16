@@ -23,6 +23,8 @@ it for every app, not just this one.
 | | |
 | --- | --- |
 | **Learn** | Today's plan, plus three unlimited modes: **Practise more** (keeps serving whatever is weakest), **Quiz me** (tests without touching the schedule) and **Mistakes**. Tap any unit to drill just that unit. |
+| **Flashcards** | A flip deck for review: Dutch on the front, tap to reveal English, then grade it **Again** or **Good**. Both answers feed the same scheduler, and because you grade yourself those attempts never flatter the recall figure. |
+| **Pictures** | Optional picture cues in the module data (`image`), shown while a sentence is first met and in Words. Four of the built-in sentences use one; the app is complete without any. |
 | **Six drill types** | reading with audio, gap-fill, multiple choice, word-bank sentence building, dictation, production from English. A failure drops a sentence one rung; success moves it up. |
 | **Words** | every sentence, searchable, with audio, literal gloss and grammar tags. |
 | **Progress** | true recall (reviews only), sentences known, per-unit coverage, day streak, and the grammar tags you keep missing. |
@@ -94,7 +96,7 @@ buttons and still works with no files to load.
 ```bash
 npm install
 npm run dev        # http://localhost:5182 — the web build is the same app
-npm run check      # typecheck + 89 tests
+npm run check      # typecheck + 96 tests
 npm run build      # static build into dist/
 node scripts/audio-index.mjs   # re-index bundled recordings
 ```

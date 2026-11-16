@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Answer, SessionItem } from "@/lib/session";
-import type { CardKind } from "@/types";
+import type { CardKind, SessionMode } from "@/types";
 import {
   buildBank,
   clozeParts,
@@ -14,7 +14,7 @@ import {
 } from "@/lib/text";
 import { feedbackComplete, feedbackCorrect, feedbackWrong } from "@/lib/sound";
 import { Icon, type IconName } from "./icons";
-import { Button, Card, Chip, Empty, IconButton, Option, Speaker } from "./ui";
+import { Button, Card, Chip, Empty, IconButton, ItemImage, Option, Speaker } from "./ui";
 
 const KIND_LABEL: Record<CardKind, string> = {
   study: "Read and listen",
@@ -56,6 +56,7 @@ export interface SessionPool {
 export function SessionView({
   items,
   pool,
+  mode,
   autoPlay,
   onAnswer,
   onFinish,
@@ -65,6 +66,7 @@ export function SessionView({
 }: {
   items: SessionItem[];
   pool: SessionPool;
+  mode?: SessionMode;
   autoPlay: boolean;
   onAnswer: (item: SessionItem, answer: Answer, typed: string, ms: number) => Promise<void> | void;
   onFinish: (summary: SessionSummary) => void;
@@ -85,6 +87,7 @@ export function SessionView({
   const startedAt = useRef(Date.now());
 
   const item = items[index];
+  const cards = mode === "cards";
 
   useEffect(() => {
     startedAt.current = Date.now();
@@ -161,10 +164,8 @@ export function SessionView({
     settle({ correct: normalise(option) === normalise(item.item.translation), almost: false }, option);
   }
 
-  async function next() {
+  async function advance(answer: Answer, typedAnswer: string) {
     if (!item) return;
-    const answer = pending ?? { correct: true, almost: false };
-    const typedAnswer = item.kind === "choice" ? (selected ?? "") : item.kind === "bank" ? picked.join(" ") : typed;
     const countedDone = done + 1;
     const countedCorrect = correct + (answer.correct ? 1 : 0);
 
@@ -178,6 +179,13 @@ export function SessionView({
       return;
     }
     setIndex(index + 1);
+  }
+
+  async function next() {
+    if (!item) return;
+    const answer = pending ?? { correct: true, almost: false };
+    const typedAnswer = item.kind === "choice" ? (selected ?? "") : item.kind === "bank" ? picked.join(" ") : typed;
+    await advance(answer, typedAnswer);
   }
 
   const tokens =
@@ -201,8 +209,8 @@ export function SessionView({
 
       <div className="session-meta">
         <span className="kind-chip">
-          <Icon name={KIND_ICON[item.kind]} size={13} />
-          {KIND_LABEL[item.kind]}
+          <Icon name={cards ? "layers" : KIND_ICON[item.kind]} size={13} />
+          {cards ? "Flashcard" : KIND_LABEL[item.kind]}
         </span>
         <button type="button" className="link" onClick={() => onReport(item)}>
           Report
@@ -210,8 +218,28 @@ export function SessionView({
       </div>
 
       <Card>
-        {item.kind === "study" ? (
+        {cards ? (
+          <div className="stack" style={{ gap: 14 }}>
+            {item.item.image ? <ItemImage src={item.item.image} /> : null}
+            <div className="row" style={{ alignItems: "center", gap: 14 }}>
+              <Speaker big onClick={() => play(item)} />
+              <p className="display">{item.item.text}</p>
+            </div>
+            {revealed ? (
+              <div className="stack" style={{ gap: 4 }}>
+                <p className="en">{item.item.translation}</p>
+                {item.item.literal ? <p className="lit">{item.item.literal}</p> : null}
+                {item.item.tip ? <p className="tiny dim">{item.item.tip}</p> : null}
+              </div>
+            ) : (
+              <p className="small muted">Say it in English, then out loud in Dutch. Reveal when both are there.</p>
+            )}
+          </div>
+        ) : null}
+
+        {!cards && item.kind === "study" ? (
           <div className="stack">
+            {item.item.image ? <ItemImage src={item.item.image} /> : null}
             <div className="row" style={{ alignItems: "center", gap: 14 }}>
               <Speaker big onClick={() => play(item)} />
               <p className="display">{item.item.text}</p>
@@ -229,7 +257,7 @@ export function SessionView({
           </div>
         ) : null}
 
-        {item.kind === "cloze" && cloze ? (
+        {!cards && item.kind === "cloze" && cloze ? (
           <div className="stack">
             <div className="row" style={{ alignItems: "center", gap: 14 }}>
               <Speaker onClick={() => play(item)} />
@@ -244,7 +272,7 @@ export function SessionView({
           </div>
         ) : null}
 
-        {item.kind === "choice" ? (
+        {!cards && item.kind === "choice" ? (
           <div className="stack">
             <div className="row" style={{ alignItems: "center", gap: 14 }}>
               <Speaker onClick={() => play(item)} />
@@ -271,7 +299,7 @@ export function SessionView({
           </div>
         ) : null}
 
-        {item.kind === "bank" ? (
+        {!cards && item.kind === "bank" ? (
           <div className="stack">
             <p className="display small">{item.item.translation}</p>
             <p className="small muted">{KIND_HINT.bank}</p>
@@ -304,7 +332,7 @@ export function SessionView({
           </div>
         ) : null}
 
-        {item.kind === "listen" ? (
+        {!cards && item.kind === "listen" ? (
           <div className="stack">
             <div className="row" style={{ alignItems: "center", gap: 14 }}>
               <Speaker big onClick={() => play(item)} />
@@ -317,7 +345,7 @@ export function SessionView({
           </div>
         ) : null}
 
-        {item.kind === "produce" ? (
+        {!cards && item.kind === "produce" ? (
           <div className="stack">
             <p className="display small">{item.item.translation}</p>
             <p className="small muted">{KIND_HINT.produce}</p>
@@ -326,7 +354,7 @@ export function SessionView({
         ) : null}
       </Card>
 
-      {item.kind === "cloze" || item.kind === "listen" || item.kind === "produce" ? (
+      {!cards && (item.kind === "cloze" || item.kind === "listen" || item.kind === "produce") ? (
         <Card tight>
           <input
             type="text"
@@ -359,7 +387,7 @@ export function SessionView({
             {judged.correct ? (judged.almost ? "Almost — that counts." : "Goed zo.") : "Not quite."}
           </p>
           <p className="small" style={{ marginTop: 6 }}>
-            {item.kind === "choice" && judged.correct
+            {!cards && item.kind === "choice" && judged.correct
               ? `${item.item.text} — ${item.item.translation}`
               : judged.correct && !judged.almost
                 ? item.item.text
@@ -384,7 +412,31 @@ export function SessionView({
       ) : null}
 
       <div className="action-bar">
-        {phase === "ask" ? (
+        {cards ? (
+          revealed ? (
+            <>
+              <Button
+                wide
+                size="lg"
+                onClick={() => void advance({ correct: false, almost: false }, "")}
+              >
+                Again
+              </Button>
+              <Button
+                wide
+                size="lg"
+                variant="primary"
+                onClick={() => void advance({ correct: true, almost: false }, "")}
+              >
+                Good
+              </Button>
+            </>
+          ) : (
+            <Button wide size="lg" variant="primary" onClick={() => setRevealed(true)}>
+              Show answer
+            </Button>
+          )
+        ) : phase === "ask" ? (
           item.kind === "study" ? (
             <>
               {!revealed ? (

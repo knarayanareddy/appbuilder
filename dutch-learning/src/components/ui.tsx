@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Icon, type IconName } from "./icons";
 
 export function Button({
@@ -188,5 +188,24 @@ export function Toast({ message }: { message: string }) {
     <div className="toast" role="status">
       {message}
     </div>
+  );
+}
+
+/**
+ * A picture cue, when the module has one. Missing files and offline URLs simply
+ * disappear: an image is support, never the thing being tested.
+ */
+export function ItemImage({ src, alt = "" }: { src: string; alt?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <img
+      className="item-image"
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
   );
 }

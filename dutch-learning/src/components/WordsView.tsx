@@ -3,7 +3,7 @@ import type { Snapshot } from "@/types";
 import type { Registry } from "@/lib/module";
 import { isKnown } from "@/lib/fsrs";
 import { Icon } from "./icons";
-import { Card, Pill, Speaker } from "./ui";
+import { Card, ItemImage, Pill, Speaker } from "./ui";
 
 type Filter = "all" | "learning" | "known" | "new";
 
@@ -93,6 +93,7 @@ export function WordsView({
                   <p className="small muted">{ref.item.translation}</p>
                   {open ? (
                     <div className="stack" style={{ marginTop: 10, gap: 8 }}>
+                      {ref.item.image ? <ItemImage src={ref.item.image} /> : null}
                       {ref.item.literal ? <p className="lit">{ref.item.literal}</p> : null}
                       <div className="chips">
                         <Pill tone="violet">{unit.title}</Pill>

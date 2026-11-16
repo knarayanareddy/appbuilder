@@ -453,3 +453,59 @@ here deliberately, because a 12px uppercase section header is not large text; ac
 on accent 7.4:1 dark / 6.1:1 light),
 typecheck clean, 89 tests, production build green. The one thing pixels would catch that
 maths cannot is optical spacing, which is the next thing to eyeball on a device.
+
+## 19. Pictures, flashcards, and whether this is the best combination
+
+The question was whether to add pictures or flashcards, or whether the six drills are
+already the right answer. Both exist now, but not as equal citizens, and the reasoning is
+worth writing down because it decides what gets added next.
+
+**What the evidence actually says.**
+
+- *Testing beats restudying.* Retrieval practice produces substantially better retention
+  than re-reading (Roediger & Karpicke). The six rungs are all retrieval except the first,
+  which is why the deck is a review surface and not the main path: a flip card you grade
+  yourself is weaker evidence than an answer that was checked.
+- *Spacing beats massing,* and FSRS already models it. A "flashcard app" is mostly a
+  scheduler; that part was never missing.
+- *Pictures help encoding of concrete words* (dual coding, picture superiority), **and they
+  can replace the thing being learned**: an image-cued card is passable by recognising the
+  image, and the recall does not transfer to production. That failure mode is the reason
+  pictures are support here, never the prompt.
+- *Production needs output, not recognition.* The goal is B1 inburgering: speaking and
+  writing under time pressure. Image multiple-choice trains the weakest of those.
+
+**What shipped.**
+
+1. **A flashcard deck** (`mode: "cards"`). Front: Dutch + audio (+ picture if the item has
+   one). Reveal: English and the literal gloss. Then two buttons, **Again** and **Good**.
+   - It reviews what is due first (never squeezed out by the pace), then adds new material
+     up to `dailyNew` — the same allowance the daily session uses.
+   - Both grades feed FSRS (forgot → grade 1, good → grade 3) and move the rung, so a card
+     graded Good in the deck is genuinely further along in the drills.
+   - Attempts are recorded as `study`, which the stats code already excludes from *recall*.
+     That is deliberate: a self-graded card must not inflate the one number that is
+     supposed to be trustworthy.
+   - Why have it at all, when the drills are better? Breadth and imported decks. A module
+     written by someone else may not survive the rung ladder's assumptions, and sometimes
+     you want to sweep 80 sentences rather than answer 80 questions.
+2. **Picture cues as data** (`item.image`), shown on first exposure and in Words. Validated
+   to relative paths, https, or inline images; everything else is rejected before it can
+   reach an `<img src>`. Four built-in sentences have one, in the same two-tone flat style
+   as the unit art, and the app is complete without a single image.
+
+**What was deliberately not built.**
+
+- A stock-photo deck. It costs megabytes, cannot be generated reliably for 121 sentences,
+  and in the premium look of §18 it would be the loudest thing on screen.
+- Picture-only multiple choice ("which is the bike?"). That is a vocabulary trainer, not
+  an exam trainer, and it competes with the drills for the same minutes.
+- A "study mode" that just shows cards forever. Recognition feels productive and isn't.
+
+**What would genuinely improve the combination next,** in order of expected gain per
+megabyte: (1) output practice with constrained ASR — `vosk-model-small-nl-0.22` is 39 MB,
+Apache-2.0, and would let "say it out loud" actually check the vowels; (2) listening in
+noise and at natural speed, which is what the exam actually tests; (3) more recorded audio,
+which is already the established batch process; (4) pictures, for the subset of concrete
+nouns where the image narrows meaning — the field is now there, so this is content work,
+not engineering.

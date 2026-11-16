@@ -174,3 +174,41 @@ describe("applyAnswer", () => {
     expect(after.lapses).toBe(before.lapses);
   });
 });
+
+describe("the flashcard deck", () => {
+  it("reviews what is due, then adds new material up to the pace", () => {
+    const queue = buildSession(registry, snapshot([card(FIRST), card(SECOND)]), NOW, {
+      mode: "cards",
+      limit: 6,
+    });
+
+    expect(queue.length).toBe(6);
+    // Due sentences come first and are presented as plain fronts, not as a rung.
+    expect(queue[0].key).toBe(FIRST);
+    expect(queue[0].kind).toBe("study");
+    expect(queue[1].key).toBe(SECOND);
+    expect(queue.slice(2).every((entry) => entry.kind === "study")).toBe(true);
+  });
+
+  it("never invents more new sentences than the daily pace", () => {
+    const early = snapshot([], []);
+    const capped = buildSession(registry, early, NOW, { mode: "cards", limit: 40 });
+    expect(capped.length).toBe(DEFAULT_SETTINGS.dailyNew);
+  });
+
+  it("keeps the deck review-only once today's pace is spent", () => {
+    const introduced: Attempt[] = Array.from({ length: DEFAULT_SETTINGS.dailyNew }, (_, index) => ({
+      id: `a${index}`,
+      itemId: `nl-basis/kennismaking/s00${index + 1}`,
+      kind: "study",
+      at: startOfDay(NOW) + index,
+      grade: 3,
+      correct: true,
+      ms: 900,
+      typed: "",
+    }));
+    const queue = buildSession(registry, snapshot([card(FIRST)], introduced), NOW, { mode: "cards" });
+    expect(queue.length).toBe(1);
+    expect(queue[0].key).toBe(FIRST);
+  });
+});

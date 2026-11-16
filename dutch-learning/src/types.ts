@@ -9,6 +9,12 @@ export interface Item {
   literal?: string;
   tags: string[];
   tip?: string;
+  /**
+   * Optional picture cue: a bundled path (`img/fiets.jpg`) or an https URL for imported
+   * modules. Shown while a sentence is first met and in the Words list, never as the
+   * only cue.
+   */
+  image?: string;
 }
 
 export interface Unit {
@@ -60,7 +66,7 @@ export interface Language {
 
 export type CardKind = "study" | "cloze" | "choice" | "bank" | "listen" | "produce";
 
-export type SessionMode = "daily" | "practice" | "quiz" | "unit" | "mistakes";
+export type SessionMode = "daily" | "practice" | "quiz" | "unit" | "mistakes" | "cards";
 
 export interface CardState {
   itemId: string;

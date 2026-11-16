@@ -192,6 +192,18 @@ export function buildSession(
       .slice(0, limit);
   }
 
+  if (request.mode === "cards") {
+    // Flashcards are a review tool, not a shortcut: everything due, then new material up
+    // to the daily allowance. Self-graded, so the attempts are recorded as "study" — the
+    // recall figure stays about answers that were actually checked.
+    const allowance = Math.max(0, snapshot.settings.dailyNew - introducedToday(snapshot.attempts, now));
+    const review = dueItems().map((entry) => ({ ...entry, kind: "study" as CardKind }));
+    // Reviews come first and are never squeezed out by the pace: the new-sentence
+    // allowance caps what is *added*, not what is due.
+    const room = Math.max(0, limit - review.length);
+    return review.concat(newItems(Math.min(allowance, room))).slice(0, limit);
+  }
+
   // mistakes: forgotten cards and anything answered wrong recently.
   const recentMisses = new Set(
     snapshot.attempts

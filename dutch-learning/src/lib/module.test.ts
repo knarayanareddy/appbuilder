@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { NL_BASIS } from "@/content/nl-basis";
-import { buildRegistry, countItems, itemKey, resolveKey, validateModule } from "./module";
+import { buildRegistry, countItems, isSafeImage, itemKey, resolveKey, validateModule } from "./module";
 
 function validModule() {
   return {
@@ -125,5 +125,47 @@ describe("bundled audio", () => {
     for (const key of index) {
       expect(registry.items.has(key)).toBe(true);
     }
+  });
+});
+
+describe("picture cues", () => {
+  it("accepts bundled paths, https URLs and inline images", () => {
+    expect(isSafeImage("img/s011.jpg")).toBe(true);
+    expect(isSafeImage("img/units/boodschappen.webp")).toBe(true);
+    expect(isSafeImage("/img/s011.jpg")).toBe(true);
+    expect(isSafeImage("https://example.com/apple.png")).toBe(true);
+    expect(isSafeImage("data:image/png;base64,AAAA")).toBe(true);
+  });
+
+  it("refuses anything that could execute or leak", () => {
+    expect(isSafeImage("javascript:alert(1)")).toBe(false);
+    expect(isSafeImage("file:///etc/passwd")).toBe(false);
+    expect(isSafeImage("http://example.com/a.png")).toBe(false);
+    expect(isSafeImage("img/a b.png")).toBe(false);
+    expect(isSafeImage("img/../../secret.png")).toBe(false);
+    expect(isSafeImage("")).toBe(false);
+  });
+
+  it("drops a bad picture from a module and says why", () => {
+    const raw = {
+      schemaVersion: 1,
+      id: "demo",
+      language: "nl",
+      title: "Demo",
+      description: "With a dodgy image",
+      units: [
+        {
+          id: "u1",
+          title: "Unit",
+          blurb: "",
+          level: "A1",
+          items: [{ id: "a", text: "Hallo.", translation: "Hello.", image: "javascript:alert(1)" }],
+        },
+      ],
+    };
+    const result = validateModule(raw);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((error) => /image/.test(error))).toBe(true);
+    expect(result.module?.units?.[0]?.items?.[0]?.image).toBeUndefined();
   });
 });
