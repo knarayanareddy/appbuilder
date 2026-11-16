@@ -238,7 +238,7 @@ week", and it should be reused rather than rebuilt.
 - **Translation**: ML Kit on-device, optional, wifi-only model download.
 - **CI**: the existing workflow pattern — typecheck, lint, tests, build, sign, release.
 
-Risks worth naming now: Vosk's model-packing adds ~40 MB to the APK and needs an
+Risks worth naming now: Vosk's model-packing adds ~56 MB to the APK (§20) and needs an
 `unzip`-on-first-run step; constrained-grammar accuracy on a phone speaker must be *measured*
 on your voice before pronunciation grading ships; ASR plus TTS in one app wants microphone
 permission, which is a one-time prompt you should see explained in-app.
@@ -556,7 +556,11 @@ language model) or a cloud API; both break the offline, no-account promise, so n
 here. The value it does deliver is behavioural: on the one rung where you are supposed to
 *say* something, the app now expects you to say it.
 
-**Cost.** +39 MB in the APK (≈ 4.9 MB → ≈ 44 MB), a one-time unpack on first use, and a
-`RECORD_AUDIO` permission that is requested only when the learner taps *Say it* — with a
-refusal just hiding the button. **Settings → Voice → Speech check** turns the whole thing
-off for anyone who would rather just type.
+**Cost, measured rather than estimated.** 4.9 MB → **61.1 MB**: 39 MB of model, ~17 MB of
+Kaldi and JNA native libraries, and the web build. The first attempt shipped at 84 MB
+because Vosk bundles four architectures and two of them are x86 — emulators, never phones —
+so the Gradle config now limits the APK to `arm64-v8a` and `armeabi-v7a`. The rest of the
+cost is a one-time unpack on first use and a `RECORD_AUDIO` permission requested only when
+the learner taps *Say it*, with a refusal just hiding the button.
+**Settings → Voice → Speech check** turns the whole thing off for anyone who would rather
+just type.

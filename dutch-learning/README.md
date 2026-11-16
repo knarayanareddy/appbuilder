@@ -89,7 +89,9 @@ buttons and still works with no files to load.
   including third-party offline ones with their own Dutch voices.
 ### Speaking, and what the phone can actually hear
 
-- The APK carries `vosk-model-small-nl-0.22` (39 MB, Apache-2.0) in its assets. The first
+- The APK is now ~61 MB, from 4.9 MB, because it carries `vosk-model-small-nl-0.22`
+  (39 MB, Apache-2.0) and Vosk's native libraries. Download it over wifi.
+- The model lives in the app's assets, not a download. The first
   time you tap **Say it**, it unpacks the model into the app's own storage — a few seconds,
   once — and from then on listening starts immediately. There is no download at runtime.
 - Recognition runs entirely on the phone, in the app process. No audio is stored or sent
