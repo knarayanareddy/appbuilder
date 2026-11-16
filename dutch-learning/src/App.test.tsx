@@ -120,6 +120,16 @@ describe("App", () => {
     await waitFor(async () => expect((await loadSnapshot()).settings.dailyNew).toBe(11));
   });
 
+  it("says where progress is kept, and how old the last backup is", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Settings" }));
+
+    expect(await screen.findByText(/Saving on this phone/)).toBeInTheDocument();
+    expect(screen.getByText(/Last backup: never/)).toBeInTheDocument();
+  });
+
   it("lists every sentence in Words", async () => {
     const user = userEvent.setup();
     render(<App />);

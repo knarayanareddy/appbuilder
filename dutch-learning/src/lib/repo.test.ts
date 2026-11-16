@@ -179,4 +179,12 @@ describe("settings migration", () => {
     expect(bad.theme).toBe("system");
     expect(bad.sound).toBe(true);
   });
+
+  it("remembers when a backup was taken, and forgets nonsense", () => {
+    const at = Date.UTC(2026, 10, 1);
+    expect(normaliseSettings({ lastBackupAt: at } as Partial<typeof DEFAULT_SETTINGS>).lastBackupAt).toBe(at);
+    expect(normaliseSettings({} as Partial<typeof DEFAULT_SETTINGS>).lastBackupAt).toBeNull();
+    expect(normaliseSettings({ lastBackupAt: 0 } as Partial<typeof DEFAULT_SETTINGS>).lastBackupAt).toBeNull();
+    expect(normaliseSettings({ lastBackupAt: Number.NaN } as Partial<typeof DEFAULT_SETTINGS>).lastBackupAt).toBeNull();
+  });
 });

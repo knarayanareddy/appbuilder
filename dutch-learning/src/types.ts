@@ -111,6 +111,8 @@ export interface Settings {
   approximateVoice: boolean;
   /** Offer the microphone check on production cards, where the build has the model. */
   speechCheck: boolean;
+  /** When the learner last exported a backup. Null is "never", and worth saying. */
+  lastBackupAt: number | null;
   /** False until the intro has been seen once. */
   onboarded: boolean;
 }
@@ -127,6 +129,7 @@ export const DEFAULT_SETTINGS: Settings = {
   haptics: true,
   approximateVoice: true,
   speechCheck: true,
+  lastBackupAt: null,
   onboarded: false,
 };
 

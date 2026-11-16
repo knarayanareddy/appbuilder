@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Attempt, CardState, Module, Report, Settings, Snapshot } from "@/types";
 import { appendAttempt, appendReport, loadSnapshot, saveCards, saveModules, saveSettings } from "@/lib/repo";
+import { backupIsStale, probeStorage, type StorageProbe } from "@/lib/durability";
 import { applyAnswer, buildSession, gradeFor, type Answer, type SessionItem, type SessionRequest } from "@/lib/session";
 import { buildRegistry } from "@/lib/module";
 import { newCard } from "@/lib/fsrs";
@@ -54,14 +55,42 @@ export default function App() {
   const [speech, setSpeech] = useState<SpeechStatus | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  // Two failure modes that used to be silent: the app not opening its store at all, and
+  // a write being refused while the screen says "saved".
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [storage, setStorage] = useState<StorageProbe | null>(null);
   const toastTimer = useRef<number | null>(null);
 
   const registry = useMemo(() => buildRegistry(snapshot?.modules ?? []), [snapshot?.modules]);
   const locale = languageFor(snapshot?.settings.language ?? "nl").ttsLocale;
 
+  const load = useCallback(() => {
+    setLoadError(null);
+    loadSnapshot()
+      .then(setSnapshot)
+      .catch((problem: unknown) => {
+        setLoadError(problem instanceof Error ? problem.message : "the phone did not hand back any data");
+      });
+  }, []);
+
   useEffect(() => {
-    void loadSnapshot().then(setSnapshot);
+    load();
     void loadAudioIndex();
+    void probeStorage().then(setStorage);
+  }, [load]);
+
+  /**
+   * Every write goes through here so a refusal is visible instead of assumed. The
+   * banner clears itself as soon as one write succeeds again.
+   */
+  const persist = useCallback(async (work: () => Promise<void>) => {
+    try {
+      await work();
+      setSaveError(null);
+    } catch (problem) {
+      setSaveError(problem instanceof Error ? problem.message : "the phone refused to save");
+    }
   }, []);
 
   useEffect(() => {
@@ -170,21 +199,23 @@ export default function App() {
     };
 
     setSnapshot({ ...snapshot, cards, attempts: [...snapshot.attempts, attempt] });
-    await saveCards(cards);
-    await appendAttempt(attempt);
+    await persist(async () => {
+      await saveCards(cards);
+      await appendAttempt(attempt);
+    });
   };
 
   const changeSettings = async (settings: Settings) => {
     if (!snapshot) return;
     setSnapshot({ ...snapshot, settings });
-    await saveSettings(settings);
+    await persist(() => saveSettings(settings));
   };
 
   const addModule = async (module: Module) => {
     if (!snapshot) return;
     const modules = [...snapshot.modules.filter((entry) => entry.id !== module.id), module];
     setSnapshot({ ...snapshot, modules });
-    await saveModules(modules);
+    await persist(() => saveModules(modules));
   };
 
   const removeModule = async (moduleId: string) => {
@@ -201,7 +232,9 @@ export default function App() {
     if (note === null) return;
     const entry: Report = { itemId: item.key, note: note.trim(), at: Date.now() };
     setSnapshot({ ...snapshot, reports: [...snapshot.reports, entry] });
-    await appendReport(entry);
+    await persist(async () => {
+      await appendReport(entry);
+    });
     showToast("Reported — it is in Settings → Translation reports");
   };
 
@@ -235,9 +268,34 @@ export default function App() {
     return (
       <div className="app">
         <div className="screen">
-          <Card>
-            <p className="muted">Opening your sentences…</p>
-          </Card>
+          {loadError ? (
+            <>
+              <Card className="banner">
+                <p className="small" style={{ fontWeight: 600 }}>
+                  Taal cannot open its storage on this phone
+                </p>
+                <p className="tiny muted" style={{ marginTop: 6 }}>
+                  {loadError}. Nothing has been deleted — but nothing can be saved either. Try again first; if it keeps
+                  happening, the app&apos;s data directory is damaged, and a reinstall fixes it at the cost of progress.
+                </p>
+                <div className="row" style={{ marginTop: 12 }}>
+                  <Button size="sm" variant="primary" onClick={load}>
+                    Try again
+                  </Button>
+                </div>
+              </Card>
+              <Card tight>
+                <p className="tiny muted">
+                  Android keeps app storage to itself: settings → apps → Taal → storage holds the same data, and clearing
+                  it has the same effect as reinstalling.
+                </p>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <p className="muted">Opening your sentences…</p>
+            </Card>
+          )}
         </div>
       </div>
     );
@@ -335,6 +393,18 @@ export default function App() {
         </div>
       ) : null}
 
+      {saveError ? (
+        <Card className="banner">
+          <p className="small" style={{ fontWeight: 600 }}>
+            Your last change was not saved
+          </p>
+          <p className="tiny muted" style={{ marginTop: 6 }}>
+            {saveError}. Everything on screen is still true; the phone just refused to keep it. Export a backup from
+            Settings before closing the app, and make some room if storage is full.
+          </p>
+        </Card>
+      ) : null}
+
       {!summary && tab === "learn" ? (
         <LearnView
           registry={registry}
@@ -366,6 +436,9 @@ export default function App() {
           onOpenVoiceInstall={() => void openVoiceInstall().then(() => checkVoice())}
           onReplayIntro={() => void replayIntro()}
           onToast={showToast}
+          storage={storage}
+          saveError={saveError}
+          backupStale={backupIsStale(snapshot.settings.lastBackupAt, now, snapshot.attempts.length)}
         />
       ) : null}
 

@@ -5,6 +5,7 @@ import { exportSnapshot, importSnapshot, resetAll } from "@/lib/repo";
 import { countItems, validateModule, type Registry } from "@/lib/module";
 import { countRecorded, isNative, type SpeechStatus } from "@/lib/speech";
 import { asrStatus, type AsrState } from "@/lib/asr";
+import { backupAge, formatBytes, type StorageProbe } from "@/lib/durability";
 import { LANGUAGES } from "@/lib/languages";
 import { Icon } from "./icons";
 import { Bar, Button, Card, Pill, SectionTitle, Toggle } from "./ui";
@@ -22,6 +23,9 @@ export function SettingsView({
   onOpenVoiceInstall,
   onReplayIntro,
   onToast,
+  storage,
+  saveError,
+  backupStale,
 }: {
   registry: Registry;
   snapshot: Snapshot;
@@ -35,6 +39,9 @@ export function SettingsView({
   onOpenVoiceInstall: () => void;
   onReplayIntro: () => void;
   onToast: (message: string) => void;
+  storage?: StorageProbe | null;
+  saveError?: string | null;
+  backupStale?: boolean;
 }) {
   const [errors, setErrors] = useState<string[]>([]);
   const [paste, setPaste] = useState("");
@@ -78,6 +85,8 @@ export function SettingsView({
     try {
       const name = backupFileName();
       const saved = await saveBackupFile(exportSnapshot(snapshot), name);
+      // Remembering the date is what turns "back up sometime" into a visible promise.
+      void onSettings({ ...settings, lastBackupAt: Date.now() });
       onToast(`Saved ${name} to ${saved.location}${saved.shared ? " · share sheet opened" : ""}`);
     } catch (error) {
       onToast(error instanceof Error ? error.message : "Backup failed.");
@@ -484,11 +493,30 @@ export function SettingsView({
         ) : null}
       </Card>
 
-      <SectionTitle>Backup</SectionTitle>
+      <SectionTitle>Storage and backup</SectionTitle>
       <Card>
-        <p className="small muted">
-          One file with every schedule, attempt and imported module. Installing a new APK keeps your data; a lost phone
-          does not.
+        <p
+          className="tiny"
+          style={{ color: saveError || storage?.ok === false ? "var(--red-text)" : "var(--label-2)" }}
+        >
+          {saveError
+            ? `Not saving: ${saveError}.`
+            : !storage
+              ? "Checking that this phone can keep your progress…"
+              : storage.ok
+                ? `Saving on this phone · ${formatBytes(storage.usage)} in use${
+                    storage.persisted ? " · protected from eviction" : ""
+                  }.`
+                : `Not saving: ${storage.error}.`}
+        </p>
+        <p className="small muted" style={{ marginTop: 10 }}>
+          One file with every schedule, attempt and imported module. Installing a new APK keeps your data — the phone
+          keeps it in the app&apos;s own storage, so closing Taal, or Android closing it for you, changes nothing. What
+          does erase it: uninstalling, or clearing storage in Android&apos;s app settings.
+        </p>
+        <p className="tiny" style={{ marginTop: 10, color: backupStale ? "var(--accent-text)" : "var(--label-3)" }}>
+          Last backup: {backupAge(settings.lastBackupAt, Date.now())}
+          {backupStale ? ` — that is the only copy that survives a lost phone.` : "."}
         </p>
         <div className="row" style={{ marginTop: 12 }}>
           <Button wide variant="primary" icon="download" onClick={() => void backUp()} disabled={busy}>

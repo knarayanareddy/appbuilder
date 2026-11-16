@@ -54,6 +54,10 @@ export function normaliseSettings(raw: Partial<Settings> | undefined): Settings 
     approximateVoice:
       typeof raw?.approximateVoice === "boolean" ? raw.approximateVoice : DEFAULT_SETTINGS.approximateVoice,
     speechCheck: typeof raw?.speechCheck === "boolean" ? raw.speechCheck : DEFAULT_SETTINGS.speechCheck,
+    lastBackupAt:
+      typeof raw?.lastBackupAt === "number" && Number.isFinite(raw.lastBackupAt) && raw.lastBackupAt > 0
+        ? raw.lastBackupAt
+        : null,
     // A saved settings blob without the flag means an install from before the intro
     // existed: those learners have already found their way around, so do not greet
     // them with the welcome screens.

@@ -564,3 +564,48 @@ cost is a one-time unpack on first use and a `RECORD_AUDIO` permission requested
 the learner taps *Say it*, with a refusal just hiding the button.
 **Settings → Voice → Speech check** turns the whole thing off for anyone who would rather
 just type.
+
+## 21. Persistence: the checks that were missing, and what is still true
+
+The question that produced this section: *does anything survive the app being closed, and
+what else should be checked?* Two answers.
+
+**What was already true.** State lives in IndexedDB inside the app's private WebView
+storage, and every answer writes the schedule and the attempt **as it is answered**
+(`saveCards` then `appendAttempt`), not at the end of a session. So a kill in the middle of
+a session loses at most the card in flight, and there is nothing to flush on exit. The
+attempts log is capped at 5,000 by design; cards, settings and modules are not. Installing
+a newer APK over an older one keeps everything, because the signing key is pinned.
+
+**What was not true, and is now.** Three silent failures, each of which would have looked
+like the app working:
+
+1. **The app could spin forever.** If `loadSnapshot()` rejected — damaged data directory,
+   storage blocked — nothing caught it and the screen said "Opening your sentences…"
+   indefinitely. The database open now has a six-second deadline and a `blocked` handler,
+   and the App shows what happened with a *Try again*, plus the honest note that a reinstall
+   fixes a damaged directory at the cost of progress.
+2. **A refused write was invisible.** Success was taken from the request returning, not from
+   the transaction committing, so a quota or eviction failure could report "saved" while the
+   data was gone. Writes now resolve on `transaction.oncomplete` and reject on `onabort`;
+   every save goes through one `persist()` wrapper in `App` that shows a red bar the moment
+   something is refused, and clears it when a write succeeds again.
+3. **Nobody checked whether storage worked at all.** `probeStorage()` writes a token, reads
+   it back, and asks the platform for persistence and an estimate. Settings shows the result
+   in words: *Saving on this phone · 48 KB in use*, or *Not saving: …*.
+
+Around that: the backup card now reports how old the last export is (`backupAge`), nags once
+there are 100+ attempts and either no backup or one older than 30 days (`backupIsStale`), and
+records the date when you take one. The point is not the reminder — it is that a phone that
+dies, or a data directory that gets cleared, is survivable only if a file exists somewhere
+else.
+
+**What is accepted, not fixed.** Uninstalling wipes progress. Android's *Clear storage* does
+the same. A learner who never exports has one copy, on one device. The speech model's unpack
+takes another 39 MB of app storage, which on a nearly full phone is precisely how a save
+starts failing — which is why the refusal is now loud rather than silent.
+
+**Verified rather than assumed:** `durability.test.ts` (probe success, a rejected write, a
+store that reads back something else, size and age formatting, the nag threshold),
+`repo.test.ts` (the backup date survives normalisation, and nonsense is dropped), and
+`App.storage.test.tsx` (a broken open shows the recovery screen, not a spinner).

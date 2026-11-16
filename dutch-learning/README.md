@@ -31,7 +31,7 @@ it for every app, not just this one.
 | **Progress** | true recall (reviews only), sentences known, per-unit coverage, day streak, and the grammar tags you keep missing. |
 | **Dialogen** | three short dialogues (gemeente, huisarts, markt) with line-by-line audio and English on demand — the Delftse-methode idea that context beats isolated sentences. |
 | **Modules** | the curriculum is data: paste a JSON module in Settings and it appears in Learn, in any of eight languages. See [docs/MODULE-FORMAT.md](docs/MODULE-FORMAT.md) and [docs/AUTHORING-PROMPT.md](docs/AUTHORING-PROMPT.md). |
-| **Backup** | one JSON file with schedules, history and imported modules — the only copy that survives a lost phone. |
+| **Backup** | one JSON file with schedules, history and imported modules — the only copy that survives a lost phone. Settings shows when the last one was taken. |
 | **First run** | three screens: what this is, how much Dutch you already have (which sets the pace), and whether the phone can actually speak Dutch — then a 12-question placement check that skips what you already know. **Settings → Intro** replays it. |
 | **Feel** | a quiet two-note tone when an answer lands, a low thud when it does not, a short arpeggio when the session ends, plus haptics on a phone. Both can be switched off; both are generated at runtime, so there is no sound file in the APK. |
 | **Light theme** | dark by default, with a manual dark/light/system switch in Settings. Both palettes are the same tokens — the theme is one attribute on `<html>`. |
@@ -87,10 +87,31 @@ buttons and still works with no files to load.
 - The catch that no app can fix: the Dutch voice is a Google text-to-speech pack, one
   download for the whole phone, installed by you, not by the app. Any engine works,
   including third-party offline ones with their own Dutch voices.
+### Where your progress lives
+
+- Every answer is written to the phone's own storage **as it is answered**, not at the end of
+  a session: closing Taal, Android killing it in the background, or rebooting loses at most
+  the card on screen. A session has nothing left to flush.
+- It lives in the app's private WebView storage. Other apps cannot read it, nothing syncs
+  it, and reinstalling Taal onto a lost phone brings back nothing that was not backed up.
+- What erases it: uninstalling, or **Settings → Apps → Taal → Storage → Clear storage**.
+  Installing a newer APK over the old one does not, because the signing key is pinned.
+- The app checks rather than assumes: once per launch it writes a token and reads it back,
+  and every save reports a refusal instead of ignoring it. If the phone will not keep data —
+  storage full, a damaged app directory — a red bar says so on screen and Settings →
+  Storage repeats it, instead of the app quietly losing a month of work.
+- `Settings → Storage and backup` also shows how much the app is using, whether the platform
+  promised not to evict it, and how old your last backup is.
+- The attempt log keeps the most recent 5,000 answers (by design — it is a learning log, not
+  an archive). Cards, schedules and settings are never trimmed.
+
 ### Speaking, and what the phone can actually hear
 
 - The APK is now ~61 MB, from 4.9 MB, because it carries `vosk-model-small-nl-0.22`
   (39 MB, Apache-2.0) and Vosk's native libraries. Download it over wifi.
+- The unpacked model costs another 39 MB of app storage. On a nearly full phone that can
+  squeeze the space the app needs for progress — which is exactly the case the storage
+  check now reports instead of hiding.
 - The model lives in the app's assets, not a download. The first
   time you tap **Say it**, it unpacks the model into the app's own storage — a few seconds,
   once — and from then on listening starts immediately. There is no download at runtime.
@@ -120,7 +141,7 @@ buttons and still works with no files to load.
 ```bash
 npm install
 npm run dev        # http://localhost:5182 — the web build is the same app
-npm run check      # typecheck + 109 tests
+npm run check      # typecheck + 118 tests
 npm run build      # static build into dist/
 node scripts/audio-index.mjs   # re-index bundled recordings
 ```
