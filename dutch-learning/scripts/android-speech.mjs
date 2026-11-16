@@ -351,7 +351,7 @@ public class MainActivity extends BridgeActivity {
 
 function patchGradle(file) {
   let text = readFileSync(file, "utf8");
-  if (text.includes("com.alphacep:vosk-android")) {
+  if (text.includes("vosk-android")) {
     return false;
   }
   const dependenciesAt = text.lastIndexOf("dependencies {");
@@ -363,8 +363,9 @@ function patchGradle(file) {
     throw new Error(`${file}: dependencies block is not closed`);
   }
   const deps = `
-    // Offline Dutch speech recognition (Apache-2.0). JNA is Vosk's JNI bridge.
-    implementation 'com.alphacep:vosk-android:0.3.47'
+    // Offline Dutch speech recognition (Apache-2.0). JNA is Vosk's JNI bridge; the
+    // artifact is an aar published under com.alphacephei, not com.alphacep.
+    implementation 'com.alphacephei:vosk-android:0.3.47@aar'
     implementation 'net.java.dev.jna:jna:5.13.0@aar'`;
   text = text.slice(0, closeAt) + deps + "\n" + text.slice(closeAt);
   writeFileSync(file, text);

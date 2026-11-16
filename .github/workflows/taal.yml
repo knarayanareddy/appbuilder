@@ -120,7 +120,17 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          set +e
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee "$RUNNER_TEMP/gradle.log"
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" -ne 0 ]; then
+            # Job logs are not always reachable from a workstation; annotations are, so
+            # put the reason where it can be read.
+            REASON="$(grep -m 40 -E '^(e: |.*error:|\* What went wrong:|Execution failed|Could not (find|resolve))' "$RUNNER_TEMP/gradle.log" | tr '\r' ' ' | tr '\n' '|' | cut -c1-1400)"
+            [ -n "$REASON" ] || REASON="$(tail -c 1200 "$RUNNER_TEMP/gradle.log" | tr '\n' '|')"
+            echo "::error title=Gradle::${REASON}"
+            exit "$STATUS"
+          fi
 
       # Each runner generates its own debug keystore, so without this every build
       # would have a different key and the next APK would refuse to install over
